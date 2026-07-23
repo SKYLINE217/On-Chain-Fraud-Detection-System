@@ -1,0 +1,37 @@
+# ── Person B: ML / Serving / Product ─────────────────────────────────────
+# PyTorch (adjust index URL for your CUDA version, or remove for CPU-only)
+torch>=2.0.0
+torchvision
+torchaudio
+
+# PyTorch Geometric (install matching wheels for your torch+CUDA version)
+torch_geometric
+torch_scatter
+torch_sparse
+torch_cluster
+torch_spline_conv
+
+# Baselines & ML
+xgboost
+scikit-learn
+
+# Explainability (Stage 4)
+shap
+
+# Experiment tracking
+wandb
+
+# Data handling
+pandas
+pyarrow
+numpy
+
+# Visualization
+matplotlib
+plotly
+
+# API & Dashboard (Stage 4-5)
+# fastapi
+# uvicorn
+streamlit
+pyvis

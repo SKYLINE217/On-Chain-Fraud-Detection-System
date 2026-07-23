@@ -1,0 +1,41 @@
+# W&B Hyperparameter Sweep Configuration
+# ──────────────────────────────────────────────────────────────────────────
+# Run separate sweeps for GraphSAGE and GAT.
+# Select best config by val_pr_auc on illicit class.
+# Minimum 20 sweeps per model.
+#
+# Usage:
+#   wandb sweep src/models/sweep_config_graphsage.yaml
+#   wandb agent <sweep_id>
+# ──────────────────────────────────────────────────────────────────────────
+
+# ── GraphSAGE Sweep ─────────────────────────────────────────────────────
+program: src/models/sweep.py
+method: bayes
+name: graphsage-sweep
+
+metric:
+  name: val_pr_auc_illicit
+  goal: maximize
+
+parameters:
+  model_type:
+    value: graphsage
+  hidden_channels:
+    values: [64, 128, 256]
+  num_layers:
+    values: [2, 3]
+  lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.01
+  dropout:
+    values: [0.2, 0.3, 0.5]
+  aggr:
+    values: [mean, max]
+  loss_type:
+    values: [weighted_ce, focal]
+  epochs:
+    value: 200
+  patience:
+    value: 20
