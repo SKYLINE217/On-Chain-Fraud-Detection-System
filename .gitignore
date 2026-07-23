@@ -1,39 +1,56 @@
+# ── Markdown files — do NOT push ──
+*.md
 md/
 
-# Data — raw Elliptic CSVs (download via script, don't commit)
-data/raw/
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Model checkpoints (binary, large)
+# ── Data & Models ──
+data/raw/*
+data/processed/*
 checkpoints/*.pt
 checkpoints/*.pkl
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!checkpoints/.gitkeep
 
-# Experiment tracking
+# ── Experiment tracking ──
 wandb/
 mlruns/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-*.egg
+# ── Environment ──
+.env
 
-# Virtual environments
-.venv/
-venv/
-env/
-
-# IDE
+# ── IDE / OS ──
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
+*~
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
+# ── PyArmor ──
+pyarmor_runtime_*/
