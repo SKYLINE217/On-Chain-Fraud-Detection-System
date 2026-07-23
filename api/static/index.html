@@ -28,6 +28,11 @@
                     <div class="logo-icon"></div>
                     <h1>Nexus <span>Fraud Explorer</span></h1>
                 </div>
+                <div class="nav-tabs">
+                    <button class="tab-btn active" data-target="tab-ego">Ego-Network</button>
+                    <button class="tab-btn" data-target="tab-path">Path Analysis</button>
+                    <button class="tab-btn" data-target="tab-cluster">Cluster Insights</button>
+                </div>
                 <div class="status-indicator">
                     <span class="status-dot"></span>
                     <span>System Online</span>
@@ -37,81 +42,142 @@
 
         <!-- Main Content -->
         <main>
-            <!-- Sidebar / Search -->
+            <!-- Sidebar -->
             <aside class="sidebar glass-panel">
-                <h2>Analyze Transaction</h2>
-                <form id="search-form" class="search-form">
-                    <div class="input-group">
-                        <label for="tx-id">Transaction ID / Wallet Address</label>
-                        <input type="text" id="tx-id" placeholder="e.g. 230425980" required autocomplete="off">
-                    </div>
-                    <button type="submit" class="btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        Analyze
-                    </button>
-                </form>
-
-                <div class="separator"></div>
-
-                <!-- Results Widget -->
-                <div id="results-widget" class="results-widget hidden">
-                    <div class="widget-header">
-                        <h3>Risk Analysis</h3>
-                        <span id="cache-badge" class="badge">MISS</span>
-                    </div>
-                    
-                    <div class="score-display">
-                        <svg class="circular-chart" viewBox="0 0 36 36">
-                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <text x="18" y="20.35" class="percentage" id="score-text">0%</text>
-                        </svg>
-                        <div class="score-label" id="prediction-label">Unknown</div>
-                    </div>
-
-                    <div class="stats-grid">
-                        <div class="stat-box">
-                            <span class="stat-title">Confidence</span>
-                            <span class="stat-value" id="stat-confidence">--</span>
+                
+                <!-- Tab: Ego Network -->
+                <div id="tab-ego" class="tab-pane active">
+                    <h2>Analyze Transaction</h2>
+                    <form id="search-form" class="search-form">
+                        <div class="input-group">
+                            <label for="tx-id">Transaction ID / Wallet Address</label>
+                            <input type="text" id="tx-id" placeholder="e.g. 230425980" required autocomplete="off">
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-title">Community</span>
-                            <span class="stat-value" id="stat-community">--</span>
+                        <button type="submit" class="btn-primary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            Analyze
+                        </button>
+                    </form>
+
+                    <div class="separator"></div>
+
+                    <!-- Results Widget -->
+                    <div id="results-widget" class="results-widget hidden">
+                        <div class="widget-header">
+                            <h3>Risk Analysis</h3>
+                            <span id="cache-badge" class="badge">MISS</span>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-title">PageRank</span>
-                            <span class="stat-value" id="stat-pagerank">--</span>
+                        
+                        <div class="score-display">
+                            <svg class="circular-chart" viewBox="0 0 36 36">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <text x="18" y="20.35" class="percentage" id="score-text">0%</text>
+                            </svg>
+                            <div class="score-label" id="prediction-label">Unknown</div>
                         </div>
-                        <div class="stat-box">
-                            <span class="stat-title">Latency</span>
-                            <span class="stat-value" id="stat-latency">--</span>
+
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <span class="stat-title">Confidence</span>
+                                <span class="stat-value" id="stat-confidence">--</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-title">Community</span>
+                                <span class="stat-value" id="stat-community">--</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-title">PageRank</span>
+                                <span class="stat-value" id="stat-pagerank">--</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-title">Latency</span>
+                                <span class="stat-value" id="stat-latency">--</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab: Path Analysis -->
+                <div id="tab-path" class="tab-pane hidden">
+                    <h2>Shortest Path Trace</h2>
+                    <form id="path-form" class="search-form">
+                        <div class="input-group">
+                            <label for="src-tx">Source Transaction</label>
+                            <input type="text" id="src-tx" placeholder="e.g. 232022460" required autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label for="dst-tx">Destination Transaction</label>
+                            <input type="text" id="dst-tx" placeholder="e.g. 232022462" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #10b981, #059669);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>
+                            Trace Path
+                        </button>
+                    </form>
+                    
+                    <div class="separator"></div>
+
+                    <div id="path-results" class="results-widget hidden">
+                        <div class="widget-header">
+                            <h3>Path Details</h3>
+                        </div>
+                        <div class="stats-grid" style="grid-template-columns: 1fr;">
+                            <div class="stat-box">
+                                <span class="stat-title">Path Status</span>
+                                <span class="stat-value" id="path-status-text">--</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-title">Distance (Hops)</span>
+                                <span class="stat-value" id="path-length-text">--</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-title">Query Latency</span>
+                                <span class="stat-value" id="path-latency-text">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cluster Insights -->
+                <div id="tab-cluster" class="tab-pane hidden">
+                    <h2>Top Risk Communities</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">View the most high-risk clustered entities.</p>
+                    
+                    <button id="btn-load-clusters" class="btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); margin-bottom: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Load Top Clusters
+                    </button>
+
+                    <div id="cluster-results" class="cluster-results hidden">
+                        <!-- Cluster table will be injected here -->
+                    </div>
+                </div>
+
             </aside>
 
             <!-- Graph Area -->
             <section class="graph-section glass-panel">
                 <div class="graph-header">
-                    <h2>Ego-Network Visualization (2-Hop)</h2>
+                    <h2 id="graph-title">Visualization</h2>
                     <div class="graph-legend">
                         <div class="legend-item"><span class="legend-color illicit"></span> Illicit</div>
                         <div class="legend-item"><span class="legend-color licit"></span> Licit</div>
                         <div class="legend-item"><span class="legend-color unknown"></span> Unknown</div>
-                        <div class="legend-item"><span class="legend-color center"></span> Target</div>
+                        <div class="legend-item"><span class="legend-color target"></span> Selected</div>
                     </div>
                 </div>
                 
                 <div id="graph-container" class="graph-container">
                     <div id="graph-placeholder" class="graph-placeholder">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                        <p>Enter a transaction ID to visualize its ego-network.</p>
+                        <p>Waiting for query...</p>
                     </div>
                     <!-- D3 Graph will be rendered here -->
                 </div>
                 <div id="graph-loading" class="graph-loading hidden">
                     <div class="spinner"></div>
-                    <span>Computing Graph Topology...</span>
+                    <span>Processing Graph Topology...</span>
                 </div>
             </section>
         </main>
