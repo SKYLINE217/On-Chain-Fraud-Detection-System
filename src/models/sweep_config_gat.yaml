@@ -1,0 +1,30 @@
+# W&B Hyperparameter Sweep Configuration — GAT
+# ──────────────────────────────────────────────────────────────────────────
+
+program: src/models/sweep.py
+method: bayes
+name: gat-sweep
+
+metric:
+  name: val_pr_auc_illicit
+  goal: maximize
+
+parameters:
+  model_type:
+    value: gat
+  hidden_channels:
+    values: [64, 128, 256]
+  heads:
+    values: [2, 4, 8]
+  lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.01
+  dropout:
+    values: [0.2, 0.3, 0.5]
+  loss_type:
+    values: [weighted_ce, focal]
+  epochs:
+    value: 200
+  patience:
+    value: 20

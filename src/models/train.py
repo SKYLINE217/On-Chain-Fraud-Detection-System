@@ -30,6 +30,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.preprocessing import StandardScaler
 from torch_geometric.data import Data
 
 from src.models.graphsage import GraphSAGE
@@ -213,6 +214,84 @@ def build_pyg_data(
     return data
 
 
+def build_pyg_data_from_parquet(
+    parquet_path: Path,
+    edges_csv_path: Path,
+    device: Optional[torch.device] = None,
+) -> Tuple[Data, StandardScaler]:
+    """
+    Build PyG Data object from Person A's combined Parquet file (Stage 3).
+    Includes StandardScaler fit on train set to prevent leakage.
+    
+    Returns
+    -------
+    data : Data
+        PyG Data object.
+    scaler : StandardScaler
+        Fitted scaler, to be saved with the model checkpoint.
+    """
+    logger.info(f"Loading combined features from {parquet_path}...")
+    df = pd.read_parquet(parquet_path)
+    
+    # ── Verify Contract 1 ────────────────────────────────────────────
+    expected_meta = {"txId", "timeStep", "class"}
+    feature_cols = [c for c in df.columns if c not in expected_meta]
+    logger.info(f"Loaded {len(feature_cols)} features ({df.shape[0]} nodes).")
+    
+    if df[feature_cols].isna().sum().sum() > 0:
+        raise ValueError("NaNs found in features! Contract 1 violated.")
+
+    # ── ID Mapping ───────────────────────────────────────────────────
+    all_tx_ids = df["txId"].values
+    tx_id_to_idx = {tx_id: idx for idx, tx_id in enumerate(all_tx_ids)}
+    
+    # ── Labels & Masks ───────────────────────────────────────────────
+    y_values = df["class"].map(LABEL_MAP).fillna(UNKNOWN_LABEL).astype(int)
+    y = torch.tensor(y_values.values, dtype=torch.long)
+    
+    time_steps = df["timeStep"].values
+    is_labeled = (y != UNKNOWN_LABEL)
+
+    train_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(TRAIN_STEPS)), dtype=torch.bool)
+    val_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(VAL_STEPS)), dtype=torch.bool)
+    test_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(TEST_STEPS)), dtype=torch.bool)
+
+    # ── Feature Scaling (Stage 3 Requirement) ────────────────────────
+    # Fit scaler on train split ONLY
+    logger.info("Fitting StandardScaler on train split only...")
+    scaler = StandardScaler()
+    
+    X_numpy = df[feature_cols].values.astype(np.float32)
+    scaler.fit(X_numpy[train_mask.numpy()])
+    
+    # Transform entire dataset
+    X_scaled = scaler.transform(X_numpy)
+    x = torch.tensor(X_scaled, dtype=torch.float32)
+
+    # ── Edges ────────────────────────────────────────────────────────
+    logger.info(f"Loading edges from {edges_csv_path}...")
+    edges_df = pd.read_csv(edges_csv_path)
+    valid_edges = edges_df[
+        edges_df["txId1"].isin(tx_id_to_idx) & edges_df["txId2"].isin(tx_id_to_idx)
+    ]
+    src = torch.tensor([tx_id_to_idx[tx] for tx in valid_edges["txId1"]], dtype=torch.long)
+    dst = torch.tensor([tx_id_to_idx[tx] for tx in valid_edges["txId2"]], dtype=torch.long)
+    edge_index = torch.stack([src, dst], dim=0)
+
+    data = Data(
+        x=x,
+        edge_index=edge_index,
+        y=y,
+        train_mask=train_mask,
+        val_mask=val_mask,
+        test_mask=test_mask,
+    )
+    if device is not None:
+        data = data.to(device)
+
+    return data, scaler
+
+
 # ── Training ─────────────────────────────────────────────────────────────
 
 def compute_class_weights(data: Data) -> torch.Tensor:
@@ -326,6 +405,7 @@ def train_gnn(
     focal_alpha: float = 0.25,
     focal_gamma: float = 2.0,
     data_dir: Optional[Path] = None,
+    use_parquet: bool = False,
     use_wandb: bool = True,
     device: Optional[str] = None,
 ) -> Tuple[torch.nn.Module, Dict[str, float]]:
@@ -375,7 +455,16 @@ def train_gnn(
     logger.info(f"Training on device: {device}")
 
     # ── Data ─────────────────────────────────────────────────────────
-    data = build_pyg_data(data_dir, device)
+    data_dir = data_dir or RAW_DATA_DIR
+    scaler = None
+    if use_parquet:
+        parquet_path = Path("data/processed/features_combined.parquet")
+        if not parquet_path.exists():
+            raise FileNotFoundError(f"Parquet file not found at {parquet_path}")
+        edges_path = data_dir / "elliptic_txs_edgelist.csv"
+        data, scaler = build_pyg_data_from_parquet(parquet_path, edges_path, device)
+    else:
+        data = build_pyg_data(data_dir, device)
 
     in_channels = data.x.shape[1]
     logger.info(f"Input features: {in_channels}")
@@ -500,7 +589,7 @@ def train_gnn(
         model.load_state_dict(best_state_dict)
 
     # ── Save checkpoint ──────────────────────────────────────────────
-    _save_checkpoint(model, model_type, best_metrics, config)
+    _save_checkpoint(model, model_type, best_metrics, config, scaler)
 
     if use_wandb:
         finish_run()
@@ -520,6 +609,7 @@ def _save_checkpoint(
     model_type: str,
     best_metrics: Dict[str, float],
     config: Dict,
+    scaler: Optional[StandardScaler] = None,
 ):
     """
     Save the best model checkpoint and model_config.json.
@@ -532,14 +622,16 @@ def _save_checkpoint(
 
     # Save state dict
     checkpoint_path = CHECKPOINTS_DIR / f"{model_type}_best.pt"
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "config": config,
-            "best_metrics": best_metrics,
-        },
-        checkpoint_path,
-    )
+    
+    ckpt_dict = {
+        "model_state_dict": model.state_dict(),
+        "config": config,
+        "best_metrics": best_metrics,
+    }
+    if scaler is not None:
+        ckpt_dict["feature_scaler"] = scaler
+
+    torch.save(ckpt_dict, checkpoint_path)
     logger.info(f"Checkpoint saved to {checkpoint_path}")
 
     # Save model config (blend.md Contract 3)
