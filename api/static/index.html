@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>On-Chain Fraud Explorer</title>
+    <meta name="description" content="Explainability Dashboard for GNN-based On-Chain Fraud Detection.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- D3.js for Graph rendering -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="grid-overlay"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-panel">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon"></div>
+                    <h1>Nexus <span>Fraud Explorer</span></h1>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Sidebar / Search -->
+            <aside class="sidebar glass-panel">
+                <h2>Analyze Transaction</h2>
+                <form id="search-form" class="search-form">
+                    <div class="input-group">
+                        <label for="tx-id">Transaction ID / Wallet Address</label>
+                        <input type="text" id="tx-id" placeholder="e.g. 230425980" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        Analyze
+                    </button>
+                </form>
+
+                <div class="separator"></div>
+
+                <!-- Results Widget -->
+                <div id="results-widget" class="results-widget hidden">
+                    <div class="widget-header">
+                        <h3>Risk Analysis</h3>
+                        <span id="cache-badge" class="badge">MISS</span>
+                    </div>
+                    
+                    <div class="score-display">
+                        <svg class="circular-chart" viewBox="0 0 36 36">
+                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <text x="18" y="20.35" class="percentage" id="score-text">0%</text>
+                        </svg>
+                        <div class="score-label" id="prediction-label">Unknown</div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-title">Confidence</span>
+                            <span class="stat-value" id="stat-confidence">--</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-title">Community</span>
+                            <span class="stat-value" id="stat-community">--</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-title">PageRank</span>
+                            <span class="stat-value" id="stat-pagerank">--</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-title">Latency</span>
+                            <span class="stat-value" id="stat-latency">--</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Graph Area -->
+            <section class="graph-section glass-panel">
+                <div class="graph-header">
+                    <h2>Ego-Network Visualization (2-Hop)</h2>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="legend-color illicit"></span> Illicit</div>
+                        <div class="legend-item"><span class="legend-color licit"></span> Licit</div>
+                        <div class="legend-item"><span class="legend-color unknown"></span> Unknown</div>
+                        <div class="legend-item"><span class="legend-color center"></span> Target</div>
+                    </div>
+                </div>
+                
+                <div id="graph-container" class="graph-container">
+                    <div id="graph-placeholder" class="graph-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        <p>Enter a transaction ID to visualize its ego-network.</p>
+                    </div>
+                    <!-- D3 Graph will be rendered here -->
+                </div>
+                <div id="graph-loading" class="graph-loading hidden">
+                    <div class="spinner"></div>
+                    <span>Computing Graph Topology...</span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

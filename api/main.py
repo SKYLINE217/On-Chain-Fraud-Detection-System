@@ -60,14 +60,24 @@ app.include_router(path.router)
 
 # ── Root & Health ────────────────────────────────────────────────────────
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+
+# Mount static files for the dashboard
+app.mount("/static", StaticFiles(directory="api/static"), name="static")
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Liveness probe for container orchestration."""
     return {"status": "healthy", "service": "onchain-fraud-detection-api"}
 
-
 @app.get("/", tags=["Root"])
 async def root():
+    # Redirect to the Explainability Dashboard
+    return RedirectResponse(url="/static/index.html")
+
+@app.get("/api-docs", tags=["Root"])
+async def api_docs():
     return {
         "project": "On-Chain Fraud Detection System",
         "version": "1.0.0",
