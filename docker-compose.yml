@@ -31,5 +31,15 @@ services:
       - neo4j
       - cache
 
+  dashboard:
+    build: .
+    command: streamlit run src/dashboard/app.py --server.address 0.0.0.0 --server.port 8501
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+
 volumes:
   neo4j_data:

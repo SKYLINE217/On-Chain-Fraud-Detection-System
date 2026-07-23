@@ -87,7 +87,7 @@ async def api_docs():
             "cluster_top": "GET /cluster/top",
             "cluster_detail": "GET /cluster/{cluster_id}",
             "path": "GET /path?src=...&dst=...",
-            "explain": "POST /explain/tx",
+            "explain": "POST /explain/{address}",
             "health": "GET /health",
         },
     }

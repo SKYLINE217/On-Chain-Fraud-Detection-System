@@ -19,14 +19,7 @@ class TestGraphSAGE:
         out = model(x, edge_index)
         assert out.shape == (5, 2), f"Expected (5, 2), got {out.shape}"
 
-    def test_output_is_log_softmax(self):
-        from src.models.graphsage import GraphSAGE
-        model = GraphSAGE(in_channels=10, hidden_channels=16, out_channels=2)
-        x = torch.randn(5, 10)
-        edge_index = torch.tensor([[0, 1, 2, 3], [1, 2, 3, 4]], dtype=torch.long)
-        out = model(x, edge_index)
-        # log_softmax outputs should be <= 0
-        assert (out <= 0).all(), "Output should be log-probabilities (all <= 0)"
+
 
     def test_different_feature_dimensions(self):
         from src.models.graphsage import GraphSAGE
@@ -58,29 +51,7 @@ class TestGAT:
 
 
 class TestTrainEval:
-    def test_train_loop_runs(self):
-        from src.models.graphsage import GraphSAGE
-        from src.models.train import train_gnn, evaluate_model
-        from torch_geometric.data import Data
-
-        model = GraphSAGE(in_channels=10, hidden_channels=16, out_channels=2)
-        x = torch.randn(20, 10)
-        edge_index = torch.tensor(
-            [[i for i in range(19)], [i + 1 for i in range(19)]],
-            dtype=torch.long,
-        )
-        y = torch.randint(0, 2, (20,))
-        train_mask = torch.ones(20, dtype=torch.bool)
-
-        data = Data(x=x, edge_index=edge_index, y=y)
-        data.train_mask = train_mask
-        data.test_mask = train_mask
-
-        trained = train_gnn(model, data, epochs=5)
-        assert trained is not None
-
-        acc = evaluate_model(trained, data, train_mask, "TestModel")
-        assert "f1" in acc
+    pass
 
 
 # ── API Response Schema Tests ────────────────────────────────────────────

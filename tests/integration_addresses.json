@@ -1,0 +1,6 @@
+{
+  "illicit_address": "2",
+  "licit_address": "1",
+  "unknown_address": "3",
+  "notes": "These are placeholder txIds — replace with actual txIds from features_combined.parquet after reviewing the data. Pick one illicit (class=1), one licit (class=2), and one unknown."
+}
