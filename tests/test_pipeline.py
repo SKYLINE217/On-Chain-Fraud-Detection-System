@@ -60,7 +60,7 @@ class TestGAT:
 class TestTrainEval:
     def test_train_loop_runs(self):
         from src.models.graphsage import GraphSAGE
-        from src.models.train import train_model, evaluate_model
+        from src.models.train import train_gnn, evaluate_model
         from torch_geometric.data import Data
 
         model = GraphSAGE(in_channels=10, hidden_channels=16, out_channels=2)
@@ -73,13 +73,14 @@ class TestTrainEval:
         train_mask = torch.ones(20, dtype=torch.bool)
 
         data = Data(x=x, edge_index=edge_index, y=y)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        data.train_mask = train_mask
+        data.test_mask = train_mask
 
-        trained = train_model(model, data, train_mask, optimizer, epochs=5)
+        trained = train_gnn(model, data, epochs=5)
         assert trained is not None
 
-        acc = evaluate_model(trained, data, train_mask)
-        assert 0.0 <= acc <= 1.0, f"Accuracy out of range: {acc}"
+        acc = evaluate_model(trained, data, train_mask, "TestModel")
+        assert "f1" in acc
 
 
 # ── API Response Schema Tests ────────────────────────────────────────────
