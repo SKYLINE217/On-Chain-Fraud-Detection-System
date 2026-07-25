@@ -17,6 +17,27 @@ ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY", "")
 ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 
 
+def safe_fetch(params: dict) -> requests.Response:
+    """
+    BUG-05 Fix: Wrapper for requests.get that safely redacts the API key
+    from any HTTPError exception messages before they are logged.
+    Etherscan requires the key in the query params, meaning a default
+    requests HTTPError will print the full URL with the secret.
+    """
+    try:
+        response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.url:
+            # Replace the actual API key string with REDACTED in the exception args
+            raw_key = params.get("apikey", "")
+            if raw_key:
+                redacted_url = e.response.url.replace(raw_key, "***REDACTED***")
+                e.args = tuple(str(arg).replace(e.response.url, redacted_url) for arg in e.args)
+        raise e
+
+
 def fetch_transactions(address: str, start_block: int = 0, end_block: int = 99999999) -> list:
     """
     Fetches normal (external) transaction history for a wallet address.
@@ -42,8 +63,8 @@ def fetch_transactions(address: str, start_block: int = 0, end_block: int = 9999
         "apikey": ETHERSCAN_API_KEY,
     }
 
-    response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
-    response.raise_for_status()
+    # BUG-05: Use safe_fetch instead of raw requests.get
+    response = safe_fetch(params)
 
     data = response.json()
     if data.get("status") != "1":
@@ -68,9 +89,7 @@ def fetch_internal_transactions(address: str) -> list:
         "apikey": ETHERSCAN_API_KEY,
     }
 
-    response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
-    response.raise_for_status()
-
+    response = safe_fetch(params)
     data = response.json()
     return data.get("result", [])
 
@@ -88,9 +107,7 @@ def fetch_token_transfers(address: str) -> list:
         "apikey": ETHERSCAN_API_KEY,
     }
 
-    response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
-    response.raise_for_status()
-
+    response = safe_fetch(params)
     data = response.json()
     return data.get("result", [])
 

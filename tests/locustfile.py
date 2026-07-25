@@ -44,10 +44,16 @@ from locust import HttpUser, task, between, tag
 #     tail -n +2 > tests/sample_tx_ids.txt
 #
 # Then load: SAMPLE_TX_IDS = open("tests/sample_tx_ids.txt").read().splitlines()
-SAMPLE_TX_IDS = [
-    "1", "2", "3", "100", "500", "1000", "5000", "10000",
-    "50000", "100000", "150000", "200000",
-]
+import os
+
+if os.path.exists("tests/sample_tx_ids.txt"):
+    with open("tests/sample_tx_ids.txt") as f:
+        SAMPLE_TX_IDS = f.read().splitlines()
+else:
+    SAMPLE_TX_IDS = [
+        "1", "2", "3", "100", "500", "1000", "5000", "10000",
+        "50000", "100000", "150000", "200000",
+    ]
 
 SAMPLE_CLUSTER_IDS = [0, 1, 2, 3, 5, 10, 50, 100]
 

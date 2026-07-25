@@ -42,6 +42,8 @@ import numpy as np
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from api.rate_limit import limiter
+
 router = APIRouter(prefix="/explain", tags=["Explainability"])
 logger = logging.getLogger(__name__)
 
@@ -328,7 +330,8 @@ def _generate_synthetic_explanation(address: str) -> dict:
         "Expected latency: 5–15 seconds (GNNExplainer is slow by design)."
     ),
 )
-async def explain_wallet(address: str):
+@limiter.limit("2/minute")
+async def explain_wallet(address: str, request: Request):
     """
     POST /explain/{address}
     Owner: Person B | Latency budget: 5–15s

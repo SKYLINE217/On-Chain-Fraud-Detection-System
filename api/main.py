@@ -34,18 +34,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── Rate Limiting (BUG-13) ────────────────────────────────────────────────
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
+from api.rate_limit import limiter, _rate_limiting_available
 
-    limiter = Limiter(key_func=get_remote_address)
-    _rate_limiting_available = True
-    logger.info("slowapi rate limiting enabled")
-except ImportError:
-    logger.warning("slowapi not installed — rate limiting disabled. Install with: pip install slowapi")
-    limiter = None
-    _rate_limiting_available = False
+if _rate_limiting_available:
+    from slowapi import _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
 
 
 @asynccontextmanager
