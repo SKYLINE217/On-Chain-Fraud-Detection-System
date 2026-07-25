@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Card, RiskBadge, LoadingSpinner } from '../components/Shared';
 import GraphVisualizer from '../components/GraphVisualizer';
 import { apiClient } from '../api/client';
-import { AlertCircle, FileText, Network } from 'lucide-react';
+// BUG-09 Fix: Search moved to top import block (was a stray import at bottom of file)
+import { AlertCircle, FileText, Network, Search } from 'lucide-react';
 
 export default function WalletLookup() {
   const [searchParams] = useSearchParams();
@@ -16,6 +17,8 @@ export default function WalletLookup() {
   const [loading, setLoading] = useState(false);
   const [explainLoading, setExplainLoading] = useState(false);
   const [error, setError] = useState(null);
+  // BUG-32 Fix: explainError state for user-visible error feedback
+  const [explainError, setExplainError] = useState(null);
 
   useEffect(() => {
     if (!address) return;
@@ -25,6 +28,7 @@ export default function WalletLookup() {
     setWallet(null);
     setSubgraph(null);
     setExplanation(null);
+    setExplainError(null);
 
     Promise.all([
       apiClient.getWallet(address),
@@ -45,9 +49,15 @@ export default function WalletLookup() {
   const handleExplain = () => {
     if (!address) return;
     setExplainLoading(true);
+    // BUG-32 Fix: Reset previous error on each new attempt
+    setExplainError(null);
     apiClient.explainPrediction(address)
       .then(data => setExplanation(data))
-      .catch(err => console.error(err))
+      .catch(err => {
+        // BUG-32 Fix: Show user-facing error instead of silently swallowing it
+        console.error(err);
+        setExplainError('Failed to generate explanation. The model may be warming up — try again in a moment.');
+      })
       .finally(() => setExplainLoading(false));
   };
 
@@ -90,24 +100,32 @@ export default function WalletLookup() {
           </div>
         </div>
         {!explanation && (
-          <button 
-            onClick={handleExplain}
-            disabled={explainLoading}
-            style={{ 
-              background: 'var(--accent-primary)', 
-              color: 'white', 
-              border: 'none', 
-              padding: '0.5rem 1.25rem', 
-              borderRadius: '8px', 
-              cursor: 'pointer',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            {explainLoading ? <LoadingSpinner /> : <><FileText size={18} /> Generate Explanation</>}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <button 
+              onClick={handleExplain}
+              disabled={explainLoading}
+              style={{ 
+                background: 'var(--accent-primary)', 
+                color: 'white', 
+                border: 'none', 
+                padding: '0.5rem 1.25rem', 
+                borderRadius: '8px', 
+                cursor: 'pointer',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {explainLoading ? <LoadingSpinner /> : <><FileText size={18} /> Generate Explanation</>}
+            </button>
+            {/* BUG-32 Fix: User-visible error message below button */}
+            {explainError && (
+              <p style={{ color: 'var(--danger)', fontSize: '0.8rem', maxWidth: '280px', textAlign: 'right' }}>
+                {explainError}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -157,7 +175,7 @@ export default function WalletLookup() {
               <h3 style={{ marginBottom: '1rem' }}>Key Features</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {explanation.shap_top_features.map((f, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px' }}>
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                       <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{f.feature_name}</span>
                       <span style={{ fontSize: '0.875rem', color: f.shap_value > 0 ? 'var(--danger)' : 'var(--success)' }}>
@@ -175,5 +193,3 @@ export default function WalletLookup() {
     </div>
   );
 }
-// Import Search icon inside WalletLookup just for empty state
-import { Search } from 'lucide-react';

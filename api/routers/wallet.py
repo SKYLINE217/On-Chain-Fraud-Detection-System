@@ -6,8 +6,12 @@ Wallet router — GET /wallet/{address} with Redis-cached Neo4j lookups.
 
 Latency budget: <5s (cached hit), <5s (Neo4j index lookup).
 Only the hot-path /wallet/{address} gets Redis caching (TTL 1 hour).
+
+Fixes applied:
+  BUG-03: Address input validation with regex + max-length cap.
 """
 
+import re
 import time
 import logging
 from fastapi import APIRouter, HTTPException, Query
@@ -20,6 +24,25 @@ from api.neo4j_service import neo4j_service
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 cache = RedisCache()
 logger = logging.getLogger(__name__)
+
+_ADDRESS_MAX_LEN = 100
+_ELLIPTIC_RE = re.compile(r'^\d{1,20}$')           # Elliptic numeric txId
+_ETH_RE = re.compile(r'^0x[a-fA-F0-9]{40}$')       # Ethereum 0x address
+
+
+def validate_address(address: str) -> str:
+    """BUG-03: Validate and sanitize an address/txId parameter."""
+    if len(address) > _ADDRESS_MAX_LEN:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Address too long (max {_ADDRESS_MAX_LEN} characters).",
+        )
+    if _ELLIPTIC_RE.match(address) or _ETH_RE.match(address):
+        return address
+    raise HTTPException(
+        status_code=422,
+        detail="Invalid address format. Expected numeric Elliptic txId or 0x Ethereum address.",
+    )
 
 
 # ── Response Models ──────────────────────────────────────────────────────
@@ -80,6 +103,7 @@ async def get_wallet_score(address: str):
     GET /wallet/{address}
     Owner: Person A | Latency budget: <5s
     """
+    validate_address(address)  # BUG-03
     t0 = time.perf_counter()
 
     # ── Cache hit path ──
@@ -137,6 +161,7 @@ async def get_wallet_subgraph(
     GET /wallet/{address}/subgraph?hops=2&max_nodes=200
     Owner: Person A | Latency budget: <5s (bounded query)
     """
+    validate_address(address)  # BUG-03
     t0 = time.perf_counter()
 
     # Try APOC first, fall back to variable-length paths

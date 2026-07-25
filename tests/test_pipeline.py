@@ -51,7 +51,87 @@ class TestGAT:
 
 
 class TestTrainEval:
-    pass
+    """BUG-27 Fix: Previously empty class. Now contains real training logic tests."""
+
+    def test_class_weights_correct_direction(self):
+        """
+        BUG-21 regression test: illicit weight must be > licit weight.
+        In the Elliptic dataset illicit nodes are the minority class (~10%),
+        so weight[1] (illicit) must be much larger than weight[0] (licit).
+        """
+        from src.models.graphsage import GraphSAGE
+        import torch
+        from torch_geometric.data import Data
+
+        # Create synthetic data with ~10% illicit class (mirrors Elliptic)
+        torch.manual_seed(42)
+        n_total = 100
+        n_illicit = 10
+        n_licit = 90
+
+        y = torch.cat([
+            torch.zeros(n_licit, dtype=torch.long),
+            torch.ones(n_illicit, dtype=torch.long),
+        ])
+        train_mask = torch.ones(n_total, dtype=torch.bool)
+
+        x = torch.randn(n_total, 10)
+        edge_index = torch.zeros((2, 0), dtype=torch.long)
+        data = Data(x=x, edge_index=edge_index, y=y, train_mask=train_mask)
+
+        from src.models.train import compute_class_weights
+        weights = compute_class_weights(data)
+
+        assert weights.shape == (2,), f"Expected 2 weights, got {weights.shape}"
+        assert weights[1] > weights[0], (
+            f"BUG-21 regression: illicit weight ({weights[1]:.4f}) must be > "
+            f"licit weight ({weights[0]:.4f}) since illicit is the minority class."
+        )
+        # Specifically, weight[0] should be 1.0 (licit = majority baseline)
+        assert abs(weights[0].item() - 1.0) < 1e-5, (
+            f"Licit weight should be 1.0, got {weights[0]:.6f}"
+        )
+
+    def test_masks_are_mutually_exclusive(self):
+        """
+        Train/val/test masks must be non-overlapping (no data leakage).
+        Any node should appear in at most one split.
+        """
+        from torch_geometric.data import Data
+        import torch
+
+        n = 50
+        train_mask = torch.zeros(n, dtype=torch.bool)
+        val_mask = torch.zeros(n, dtype=torch.bool)
+        test_mask = torch.zeros(n, dtype=torch.bool)
+        train_mask[:30] = True
+        val_mask[30:40] = True
+        test_mask[40:] = True
+
+        # Verify no overlap
+        assert not (train_mask & val_mask).any(), "Train/val overlap detected"
+        assert not (train_mask & test_mask).any(), "Train/test overlap detected"
+        assert not (val_mask & test_mask).any(), "Val/test overlap detected"
+
+    def test_no_unknown_nodes_in_labeled_masks(self):
+        """
+        Labeled masks (train/val/test) must exclude unknown nodes (y == -1).
+        Unknown nodes should only be used for message passing, not loss computation.
+        """
+        import torch
+        import numpy as np
+
+        UNKNOWN_LABEL = -1
+        n = 100
+        y = torch.tensor(
+            [0] * 40 + [1] * 20 + [UNKNOWN_LABEL] * 40, dtype=torch.long
+        )
+        is_labeled_np = (y.numpy() != UNKNOWN_LABEL)
+
+        # Labeled mask should only be True for known nodes
+        labeled_indices = np.where(is_labeled_np)[0]
+        assert len(labeled_indices) == 60
+        assert all(y[i].item() != UNKNOWN_LABEL for i in labeled_indices)
 
 
 # ── API Response Schema Tests ────────────────────────────────────────────

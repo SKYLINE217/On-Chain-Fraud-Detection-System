@@ -6,6 +6,9 @@ Path router — GET /path?src=...&dst=...
 
 Shortest path between two transactions. Max depth 10 hops.
 Feeds the Transaction Path dashboard tab.
+
+Fixes applied:
+  BUG-03: Address input validation with regex + max-length cap.
 """
 
 import time
@@ -14,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from api.neo4j_service import neo4j_service
+from api.routers.wallet import validate_address
 
 router = APIRouter(prefix="/path", tags=["Path"])
 logger = logging.getLogger(__name__)
@@ -43,6 +47,8 @@ async def find_shortest_path(
     GET /path?src={txId1}&dst={txId2}
     Owner: Person A | Latency budget: <5s
     """
+    validate_address(src)  # BUG-03
+    validate_address(dst)  # BUG-03
     t0 = time.perf_counter()
     result = neo4j_service.get_shortest_path(src, dst)
     latency = (time.perf_counter() - t0) * 1000

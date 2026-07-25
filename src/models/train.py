@@ -160,20 +160,24 @@ def build_pyg_data(
 
     # ── Masks ────────────────────────────────────────────────────────
     time_steps = merged["timeStep"].values
-    is_labeled = (y != UNKNOWN_LABEL)
+    # BUG-19 Fix: Work in numpy from the start to avoid .numpy() on tensors
+    is_labeled_np = (y_values.values != UNKNOWN_LABEL)
 
     train_mask = torch.tensor(
-        is_labeled.numpy() & np.isin(time_steps, list(TRAIN_STEPS)),
+        is_labeled_np & np.isin(time_steps, list(TRAIN_STEPS)),
         dtype=torch.bool,
     )
     val_mask = torch.tensor(
-        is_labeled.numpy() & np.isin(time_steps, list(VAL_STEPS)),
+        is_labeled_np & np.isin(time_steps, list(VAL_STEPS)),
         dtype=torch.bool,
     )
     test_mask = torch.tensor(
-        is_labeled.numpy() & np.isin(time_steps, list(TEST_STEPS)),
+        is_labeled_np & np.isin(time_steps, list(TEST_STEPS)),
         dtype=torch.bool,
     )
+
+    # Recreate is_labeled tensor for the assertions below
+    is_labeled = torch.tensor(is_labeled_np, dtype=torch.bool)
 
     # ── Critical verification (aim.md §13, person_b.md §2.4) ────────
     n_labeled = is_labeled.sum().item()
@@ -249,12 +253,13 @@ def build_pyg_data_from_parquet(
     y_values = df["class"].map(LABEL_MAP).fillna(UNKNOWN_LABEL).astype(int)
     y = torch.tensor(y_values.values, dtype=torch.long)
     
-    time_steps = df["timeStep"].values
-    is_labeled = (y != UNKNOWN_LABEL)
+    # BUG-19 Fix: Use numpy arrays directly to avoid fragile .numpy() calls on tensors
+    time_steps_np = df["timeStep"].values
+    is_labeled_np = (y_values.values != UNKNOWN_LABEL)
 
-    train_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(TRAIN_STEPS)), dtype=torch.bool)
-    val_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(VAL_STEPS)), dtype=torch.bool)
-    test_mask = torch.tensor(is_labeled.numpy() & np.isin(time_steps, list(TEST_STEPS)), dtype=torch.bool)
+    train_mask = torch.tensor(is_labeled_np & np.isin(time_steps_np, list(TRAIN_STEPS)), dtype=torch.bool)
+    val_mask = torch.tensor(is_labeled_np & np.isin(time_steps_np, list(VAL_STEPS)), dtype=torch.bool)
+    test_mask = torch.tensor(is_labeled_np & np.isin(time_steps_np, list(TEST_STEPS)), dtype=torch.bool)
 
     # ── Feature Scaling (Stage 3 Requirement) ────────────────────────
     # Fit scaler on train split ONLY
@@ -306,12 +311,18 @@ def compute_class_weights(data: Data) -> torch.Tensor:
     n_licit = (y_train == 0).sum().float()
     n_illicit = (y_train == 1).sum().float()
 
-    # Inverse frequency: upweight the minority (illicit) class
-    weight = torch.tensor([n_illicit / n_licit, 1.0])
+    # BUG-21 Fix: Correct inverse-frequency weighting.
+    # illicit is the minority class → it must get weight > 1.0
+    # Old (wrong):  weight = [n_illicit/n_licit, 1.0]  ← downweights majority but does NOT upweight minority
+    # New (correct): weight = [1.0, n_licit/n_illicit]  ← properly upweights minority illicit class
+    weight_licit = 1.0
+    weight_illicit = n_licit / n_illicit   # >> 1.0 since illicit is minority
+    weight = torch.tensor([weight_licit, weight_illicit])
 
     logger.info(
-        f"Class weights — licit: {weight[0]:.4f}, illicit: {weight[1]:.4f} "
-        f"(n_licit={n_licit.item():.0f}, n_illicit={n_illicit.item():.0f})"
+        f"Class weights — licit: {weight_licit:.4f}, illicit: {weight_illicit:.4f} "
+        f"(correctly upweights minority illicit class; "
+        f"n_licit={n_licit.item():.0f}, n_illicit={n_illicit.item():.0f})"
     )
     return weight
 

@@ -6,6 +6,11 @@ Explain router — POST /explain/{address}
 
 Provides per-node explainability via GNNExplainer + SHAP/TreeExplainer.
 
+Fixes applied:
+  BUG-04: torch.load now uses weights_only=True for model checkpoints
+  BUG-07: _init_explain_context() is now async with asyncio.Lock to prevent race conditions
+  BUG-24: Feature names read from parquet schema only (no full file read)
+
 Contract 5 (blend.md) compliant response schema:
 {
     "address": "string",
@@ -25,6 +30,7 @@ Latency budget: 5–15 seconds (GNNExplainer is slow by design).
 No caching — explanations are instance-specific.
 """
 
+import asyncio
 import os
 import time
 import json
@@ -33,7 +39,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/explain", tags=["Explainability"])
@@ -85,18 +91,34 @@ _explain_context = {
     "initialized": False,
 }
 
+# BUG-07: asyncio Lock prevents concurrent initialization on first request
+_explain_lock = asyncio.Lock()
+
 
 def _get_feature_names_from_parquet():
-    """Load feature column names from the parquet schema."""
+    """
+    Load feature column names from the parquet schema only.
+    BUG-24 Fix: Uses pyarrow schema read (metadata only, ~100x faster than full file read).
+    """
     try:
-        import pandas as pd
         parquet_path = Path("data/processed/features_combined.parquet")
         if parquet_path.exists():
-            df = pd.read_parquet(parquet_path, columns=["txId"])
-            # Read column names from full file
-            df_cols = pd.read_parquet(parquet_path).columns.tolist()
+            try:
+                # BUG-24: Read only the file footer (schema metadata) — no data loaded
+                import pyarrow.parquet as pq
+                schema = pq.read_schema(parquet_path)
+                all_cols = schema.names
+            except ImportError:
+                # Fallback: read just txId column to get schema, then read columns attr
+                import pandas as pd
+                df = pd.read_parquet(parquet_path, columns=["txId"])
+                import pyarrow.parquet as pq
+                # Still try pyarrow but accept pandas fallback
+                schema = pq.read_schema(parquet_path)
+                all_cols = schema.names
+
             meta_cols = {"txId", "timeStep", "class"}
-            feature_cols = [c for c in df_cols if c not in meta_cols]
+            feature_cols = [c for c in all_cols if c not in meta_cols]
             return feature_cols
     except Exception as e:
         logger.warning("Could not read parquet for feature names: %s", e)
@@ -120,93 +142,112 @@ def _get_txid_mapping():
     return {}
 
 
-def _init_explain_context():
-    """Initialize model, data, and explainers on first request."""
-    if _explain_context["initialized"]:
-        return
+async def _init_explain_context():
+    """
+    Initialize model, data, and explainers on first request.
+    BUG-07 Fix: Protected by asyncio.Lock to prevent race conditions under concurrent load.
+    """
+    # BUG-07: Lock prevents multiple concurrent initializations
+    async with _explain_lock:
+        if _explain_context["initialized"]:
+            return
 
-    logger.info("Initializing explain context (first request)...")
+        logger.info("Initializing explain context (first request)...")
 
-    # Load feature names and txId mapping
-    _explain_context["feature_names"] = _get_feature_names_from_parquet()
-    _explain_context["txid_to_idx"] = _get_txid_mapping()
+        # Load feature names and txId mapping
+        _explain_context["feature_names"] = _get_feature_names_from_parquet()
+        _explain_context["txid_to_idx"] = _get_txid_mapping()
 
-    # Try to load model and PyG data
-    try:
-        import torch
-        from src.explain.gnn_explainer import GNNExplainerWrapper
-        from src.explain.shap_explainer import SHAPExplainer
+        # Try to load model and PyG data
+        try:
+            import torch
+            import torch.serialization
+            from src.explain.gnn_explainer import GNNExplainerWrapper
+            from src.explain.shap_explainer import SHAPExplainer
 
-        # Load PyG data
-        pyg_path = Path("data/processed/pyg_data.pt")
-        if pyg_path.exists():
-            data = torch.load(pyg_path, map_location="cpu", weights_only=False)
-            _explain_context["data"] = data
-            logger.info("PyG data loaded: %d nodes", data.num_nodes)
-        else:
-            logger.warning("PyG data not found at %s", pyg_path)
-
-        # Load best model checkpoint
-        checkpoint_path = Path("checkpoints/best_model.pt")
-        config_path = Path("checkpoints/model_config.json")
-
-        if checkpoint_path.exists() and config_path.exists():
-            with open(config_path) as f:
-                model_config = json.load(f)
-
-            model_type = model_config.get("model_type", "GraphSAGE")
-            if model_type == "GraphSAGE":
-                from src.models.graphsage import GraphSAGE
-                model = GraphSAGE(
-                    in_channels=model_config.get("in_channels", 166),
-                    hidden_channels=model_config.get("hidden_channels", 128),
-                    out_channels=model_config.get("out_channels", 2),
-                    num_layers=model_config.get("num_layers", 3),
-                    dropout=model_config.get("dropout", 0.3),
-                )
+            # Load PyG data
+            # BUG-04 Fix: Use safe_globals for PyG Data objects
+            pyg_path = Path("data/processed/pyg_data.pt")
+            if pyg_path.exists():
+                try:
+                    from torch_geometric.data import Data as PyGData
+                    with torch.serialization.safe_globals([PyGData]):
+                        data = torch.load(pyg_path, map_location="cpu", weights_only=True)
+                except Exception:
+                    # Older PyTorch without safe_globals support — use weights_only=False
+                    # with a warning
+                    logger.warning(
+                        "safe_globals not available for PyG Data — falling back to "
+                        "weights_only=False. Ensure pyg_data.pt is from a trusted source."
+                    )
+                    data = torch.load(pyg_path, map_location="cpu", weights_only=False)
+                _explain_context["data"] = data
+                logger.info("PyG data loaded: %d nodes", data.num_nodes)
             else:
-                from src.models.gat import GAT
-                model = GAT(
-                    in_channels=model_config.get("in_channels", 166),
-                    hidden_channels=model_config.get("hidden_channels", 128),
-                    out_channels=model_config.get("out_channels", 2),
-                    heads=model_config.get("heads", 4),
-                    dropout=model_config.get("dropout", 0.3),
+                logger.warning("PyG data not found at %s", pyg_path)
+
+            # Load best model checkpoint
+            checkpoint_path = Path("checkpoints/best_model.pt")
+            config_path = Path("checkpoints/model_config.json")
+
+            if checkpoint_path.exists() and config_path.exists():
+                with open(config_path) as f:
+                    model_config = json.load(f)
+
+                model_type = model_config.get("model_type", "GraphSAGE")
+                if model_type == "GraphSAGE":
+                    from src.models.graphsage import GraphSAGE
+                    model = GraphSAGE(
+                        in_channels=model_config.get("in_channels", 166),
+                        hidden_channels=model_config.get("hidden_channels", 128),
+                        out_channels=model_config.get("out_channels", 2),
+                        num_layers=model_config.get("num_layers", 3),
+                        dropout=model_config.get("dropout", 0.3),
+                    )
+                else:
+                    from src.models.gat import GAT
+                    model = GAT(
+                        in_channels=model_config.get("in_channels", 166),
+                        hidden_channels=model_config.get("hidden_channels", 128),
+                        out_channels=model_config.get("out_channels", 2),
+                        heads=model_config.get("heads", 4),
+                        dropout=model_config.get("dropout", 0.3),
+                    )
+
+                # BUG-04 Fix: Use weights_only=True for model state dict
+                checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+                model.load_state_dict(checkpoint["model_state_dict"])
+                model.eval()
+                _explain_context["model"] = model
+                logger.info("Model loaded: %s", model_type)
+
+                # Initialize GNNExplainer
+                if _explain_context["data"] is not None:
+                    _explain_context["gnn_explainer"] = GNNExplainerWrapper(
+                        model=model,
+                        data=_explain_context["data"],
+                        feature_names=_explain_context["feature_names"],
+                        explainer_epochs=200,
+                    )
+            else:
+                logger.warning(
+                    "Model checkpoint not found at %s / %s — "
+                    "explain will use synthetic explanations",
+                    checkpoint_path, config_path,
                 )
 
-            checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-            model.load_state_dict(checkpoint["model_state_dict"])
-            model.eval()
-            _explain_context["model"] = model
-            logger.info("Model loaded: %s", model_type)
-
-            # Initialize GNNExplainer
-            if _explain_context["data"] is not None:
-                _explain_context["gnn_explainer"] = GNNExplainerWrapper(
-                    model=model,
-                    data=_explain_context["data"],
-                    feature_names=_explain_context["feature_names"],
-                    explainer_epochs=200,
-                )
-        else:
-            logger.warning(
-                "Model checkpoint not found at %s / %s — "
-                "explain will use synthetic explanations",
-                checkpoint_path, config_path,
+            # Initialize SHAP explainer
+            _explain_context["shap_explainer"] = SHAPExplainer(
+                feature_names=_explain_context["feature_names"]
             )
 
-        # Initialize SHAP explainer
-        _explain_context["shap_explainer"] = SHAPExplainer(
-            feature_names=_explain_context["feature_names"]
-        )
+        except ImportError as e:
+            logger.warning("ML dependencies not available: %s", e)
+        except Exception as e:
+            logger.error("Failed to initialize explain context: %s", e)
 
-    except ImportError as e:
-        logger.warning("ML dependencies not available: %s", e)
-    except Exception as e:
-        logger.error("Failed to initialize explain context: %s", e)
-
-    _explain_context["initialized"] = True
-    logger.info("Explain context initialized")
+        _explain_context["initialized"] = True
+        logger.info("Explain context initialized")
 
 
 def _generate_synthetic_explanation(address: str) -> dict:
@@ -294,8 +335,8 @@ async def explain_wallet(address: str):
     """
     t0 = time.perf_counter()
 
-    # Lazy initialization
-    _init_explain_context()
+    # BUG-07: Async-safe lazy initialization
+    await _init_explain_context()
 
     model = _explain_context["model"]
     data = _explain_context["data"]

@@ -22,7 +22,16 @@ load_dotenv()
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+# BUG-02 Fix: No default password — fail loudly if not set
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+if not NEO4J_PASSWORD:
+    import warnings
+    warnings.warn(
+        "NEO4J_PASSWORD is not set. Copy .env.example to .env and configure it.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    NEO4J_PASSWORD = ""  # Empty — will fail on connect
 
 
 class Neo4jLoader:
@@ -52,16 +61,19 @@ class Neo4jLoader:
         df_merged["class"] = df_merged["class"].fillna("unknown")
 
         feature_cols = [c for c in df_merged.columns if c not in ["txId", "timeStep", "class"]]
+
+        # BUG-25 Fix: Replace slow iterrows() with vectorized to_dict("records")
+        # Original iterrows() on 200K rows took 30-120 seconds
+        df_merged["txId"] = df_merged["txId"].astype(str)
+        df_merged["timeStep"] = df_merged["timeStep"].astype(int)
+        df_merged = df_merged.rename(columns={"class": "txClass"})
+
+        # Build records with renamed feature columns f1..f166
         records = []
-        for _, row in df_merged.iterrows():
-            rec = {
-                "txId": str(row["txId"]),
-                "timeStep": int(row["timeStep"]),
-                "txClass": str(row["class"]),
-            }
-            for i, col in enumerate(feature_cols, start=1):
-                rec[f"f{i}"] = float(row[col])
-            records.append(rec)
+        for i, col in enumerate(feature_cols, start=1):
+            df_merged[f"f{i}"] = df_merged[col].astype(float)
+        keep_cols = ["txId", "timeStep", "txClass"] + [f"f{i}" for i in range(1, len(feature_cols) + 1)]
+        records = df_merged[keep_cols].to_dict("records")
 
         print(f"[→] Loading {len(records)} transaction nodes in batches of {batch_size}...")
         with self.driver.session() as session:
@@ -83,10 +95,9 @@ class Neo4jLoader:
     def load_edges(self, edgelist_path: str, batch_size: int = 10000):
         """Batch-load FLOWS_TO edges from the edgelist CSV."""
         df_edges = pd.read_csv(edgelist_path)
-        edges = [
-            {"src": str(row["txId1"]), "dst": str(row["txId2"])}
-            for _, row in df_edges.iterrows()
-        ]
+        # BUG-26 Fix: Replace slow iterrows() on 234K rows with vectorized to_dict
+        df_edges = df_edges.astype(str)
+        edges = df_edges.rename(columns={"txId1": "src", "txId2": "dst"})[["src", "dst"]].to_dict("records")
 
         print(f"[→] Loading {len(edges)} edges in batches of {batch_size}...")
         with self.driver.session() as session:

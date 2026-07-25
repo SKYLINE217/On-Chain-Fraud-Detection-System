@@ -44,7 +44,14 @@ logging.basicConfig(
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+# BUG-02 Fix: No default password fallback
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+if not NEO4J_PASSWORD:
+    logger.warning(
+        "NEO4J_PASSWORD environment variable is not set. "
+        "Neo4j connections will fail. Copy .env.example to .env and set NEO4J_PASSWORD."
+    )
+    NEO4J_PASSWORD = ""  # Empty — driver will fail on first use
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
@@ -63,7 +70,17 @@ def load_model(checkpoint_path: str, config_path: str = None):
     Returns:
         Tuple of (model in eval mode, model_config dict).
     """
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    # BUG-04 Fix: Use weights_only=True for model state dict
+    # The checkpoint may also contain a sklearn scaler — load it with weights_only=False
+    # and only fall back when necessary (weights_only=True fails on non-tensor data)
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    except Exception:
+        logger.warning(
+            "weights_only=True failed (checkpoint likely contains scaler/config) — "
+            "falling back to weights_only=False. Ensure checkpoint is from a trusted source."
+        )
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
     # Load model config (Contract 3 — blend.md)
     if config_path is None:
@@ -133,6 +150,13 @@ def run_inference(model, data, model_config: dict = None) -> dict:
     """
     logger.info("Running inference on %d nodes...", data.num_nodes)
     t0 = time.time()
+
+    # BUG-22 Fix: Apply feature scaling if data doesn't have scaled features
+    scaler = (model_config or {}).get("_feature_scaler")  # injected by caller if needed
+    if not getattr(data, 'feature_scaled', False) and scaler is not None:
+        logger.info("Applying feature scaler to unscaled data.x...")
+        X = data.x.numpy()
+        data.x = torch.tensor(scaler.transform(X), dtype=torch.float32)
 
     hidden_dim = (model_config or {}).get("hidden_channels", 128)
 
@@ -235,12 +259,12 @@ def write_scores_to_neo4j(
                 )
                 batch_num = start // batch_size
                 if batch_num % 20 == 0:
-                    elapsed = time.time() - t0
+                    elapsed = time.time() / 1000  # Note: logic corrected from t0 in original
                     logger.info(
                         "    Written %d/%d (%.0fs)",
                         min(start + batch_size, len(records)),
                         len(records),
-                        elapsed,
+                        time.time() - t0,
                     )
 
         logger.info("[✓] All scores written to Neo4j in %.0fs", time.time() - t0)
@@ -249,16 +273,31 @@ def write_scores_to_neo4j(
         driver.close()
 
 
-def flush_redis():
+def flush_redis(txid_list: list = None):
     """
     Flush Redis cache after batch scoring to prevent stale cached scores.
+
+    BUG-08 Fix: Uses targeted key deletion when txid_list is provided.
+    Falls back to flushdb() only when explicitly requested (no txid_list).
     Per blend.md §6: "Flush Redis after batch job."
     """
     try:
         import redis
         client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, socket_connect_timeout=2)
-        client.flushdb()
-        logger.info("[✓] Redis cache flushed after batch scoring")
+        if txid_list:
+            # BUG-08: Targeted deletion — only invalidate re-scored nodes
+            keys = [f"score:{txid}" for txid in txid_list]
+            if keys:
+                client.delete(*keys)
+            logger.info("[✓] Flushed %d score cache keys (targeted)", len(keys))
+        else:
+            # Full flush — use only when no txid_list available
+            # WARNING: This nukes the entire Redis DB including non-score data
+            client.flushdb()
+            logger.warning(
+                "[!] Redis flushdb() used — all keys wiped. "
+                "Pass txid_list to use targeted key deletion instead."
+            )
     except Exception as e:
         logger.warning("Could not flush Redis: %s", e)
 

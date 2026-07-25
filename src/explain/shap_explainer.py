@@ -85,19 +85,35 @@ class SHAPExplainer:
             bg_indices = np.random.choice(n_nodes, size=min(background_size, n_nodes), replace=False)
             background = data.x[bg_indices].detach().cpu().numpy()
 
-            # Create prediction function wrapper
+            # BUG-18 Fix: We need node_idx captured in closure scope.
+            # The function is called per target node, but KernelExplainer calls it with
+            # batches of perturbed feature vectors. We need to track which node we're
+            # explaining so we can replace ONLY that node's features.
+            # node_idx is passed in via the explain_node_kernel call below.
+            _target_node_idx = [None]  # mutable closure variable
+
             def gnn_predict(x_np):
-                x_tensor = torch.FloatTensor(x_np)
+                """
+                BUG-18 Fix: Predict for perturbed node features.
+                Replaces ONLY the target node's features with the perturbed version.
+                The original code used data.x directly (ignoring x_np entirely),
+                causing ALL SHAP values to be zero/near-zero.
+                """
                 with torch.no_grad():
-                    # Reconstruct x tensor for the model
-                    # Note: This uses fixed edge_index — structural approximation
                     full_x = data.x.clone()
+                    node_idx = _target_node_idx[0]
+                    if node_idx is not None and x_np.shape[0] >= 1:
+                        # Replace the target node's features with the perturbed version
+                        full_x[node_idx] = torch.FloatTensor(x_np[0])
                     out = gnn_model(full_x, data.edge_index)
-                    # Return probabilities for the nodes corresponding to input
-                    probs = F.softmax(out[:x_np.shape[0]], dim=-1)
+                    if node_idx is not None:
+                        probs = F.softmax(out[node_idx].unsqueeze(0), dim=-1)
+                    else:
+                        probs = F.softmax(out[:x_np.shape[0]], dim=-1)
                 return probs.cpu().numpy()
 
             self._kernel_explainer = shap.KernelExplainer(gnn_predict, background)
+            self._target_node_idx = _target_node_idx  # expose for explain_node_kernel
             logger.info(
                 "SHAP KernelExplainer initialized (approximate, bg=%d samples)",
                 len(bg_indices),
@@ -152,7 +168,8 @@ class SHAPExplainer:
         self,
         features: np.ndarray,
         top_k: int = 10,
-    ) -> List[Dict]:
+        node_idx: int = None,
+    ) -> list:
         """
         Get SHAP feature attributions using KernelExplainer.
 
@@ -162,6 +179,9 @@ class SHAPExplainer:
             Feature vector for the node, shape (n_features,).
         top_k : int
             Number of top features to return.
+        node_idx : int, optional
+            The graph node index being explained. Required for BUG-18 fix —
+            gnn_predict needs this to replace the correct node's features.
 
         Returns
         -------
@@ -171,6 +191,10 @@ class SHAPExplainer:
             return self._synthetic_shap(features, top_k)
 
         try:
+            # BUG-18 Fix: Set node_idx in closure so gnn_predict replaces the right node
+            if hasattr(self, '_target_node_idx') and node_idx is not None:
+                self._target_node_idx[0] = node_idx
+
             features_2d = features.reshape(1, -1)
             shap_values = self._kernel_explainer.shap_values(features_2d, nsamples=50)
 

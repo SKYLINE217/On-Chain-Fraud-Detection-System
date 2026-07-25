@@ -41,7 +41,12 @@ wandb/
 mlruns/
 
 # ── Environment ──
+# BUG-36 Fix: Catch all .env variants (e.g. .env.local, .env.production)
+*.env
 .env
+.env.*
+# Keep the template file committed
+!.env.example
 
 # ── IDE / OS ──
 .vscode/

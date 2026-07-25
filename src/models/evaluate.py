@@ -73,33 +73,68 @@ def evaluate_gnn(model, data, mask) -> Dict[str, float]:
 
 
 def load_gnn_checkpoint(checkpoint_path: Path, model_type: str, device: torch.device):
-    """Load a trained GNN from a checkpoint dict."""
-    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
-    config = ckpt["config"]
-    
+    """
+    Load a trained GNN from a checkpoint dict.
+
+    BUG-20 Fix: weights_only=True fails when checkpoint contains non-tensor data
+    (sklearn StandardScaler, plain Python dicts). We load weights-only from the
+    .pt file and config from the companion JSON file.
+    """
+    # First try loading with weights_only=True (safe — only tensors)
+    # If the checkpoint has embedded config/scaler, we'll get it from JSON
+    try:
+        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    except Exception:
+        # Fallback: checkpoint has non-tensor data (scaler, config dicts)
+        # This is safe since we control the checkpoint files
+        logger.warning(
+            "weights_only=True failed for %s (likely contains scaler/config) — "
+            "falling back to weights_only=False. Ensure checkpoint is from a trusted source.",
+            checkpoint_path,
+        )
+        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+
+    # Try to load config from companion JSON (preferred — avoids pickle issues)
+    config_path = checkpoint_path.parent / (checkpoint_path.stem.replace("_best", "_config") + ".json")
+    if not config_path.exists():
+        # Try the generic model_config.json
+        config_path = checkpoint_path.parent / "model_config.json"
+
+    if config_path.exists():
+        with open(config_path) as f:
+            config = json.load(f)
+        logger.info("Config loaded from %s", config_path)
+    else:
+        # Fall back to embedded config in checkpoint
+        config = ckpt.get("config", {})
+        if not config:
+            logger.warning("No config found for %s — using defaults", checkpoint_path)
+
     if model_type == "graphsage":
         model = GraphSAGE(
-            in_channels=config["in_channels"],
-            hidden_channels=config["hidden_channels"],
-            out_channels=config["out_channels"],
+            in_channels=config.get("in_channels", 166),
+            hidden_channels=config.get("hidden_channels", 128),
+            out_channels=config.get("out_channels", 2),
             num_layers=config.get("num_layers", 3),
             dropout=config.get("dropout", 0.3),
         )
     elif model_type == "gat":
         model = GAT(
-            in_channels=config["in_channels"],
-            hidden_channels=config["hidden_channels"],
-            out_channels=config["out_channels"],
+            in_channels=config.get("in_channels", 166),
+            hidden_channels=config.get("hidden_channels", 128),
+            out_channels=config.get("out_channels", 2),
             heads=config.get("heads", 4),
             dropout=config.get("dropout", 0.3),
         )
     else:
         raise ValueError(f"Unknown GNN type: {model_type}")
-        
+
     model.load_state_dict(ckpt["model_state_dict"])
     model.to(device)
-    
-    return model, ckpt.get("feature_scaler")
+
+    # Feature scaler may be in checkpoint (if weights_only=False was used above)
+    scaler = ckpt.get("feature_scaler")
+    return model, scaler
 
 
 def run_final_evaluation():

@@ -39,6 +39,7 @@ export default function PathFinder() {
               value={src} 
               onChange={e => setSrc(e.target.value)} 
               placeholder="e.g. 1A1zP1..."
+              maxLength={100}
             />
           </div>
           <div style={{ paddingBottom: '0.75rem', color: 'var(--text-muted)' }}>
@@ -53,6 +54,7 @@ export default function PathFinder() {
               value={dst} 
               onChange={e => setDst(e.target.value)} 
               placeholder="e.g. 3J98t1..."
+              maxLength={100}
             />
           </div>
           <button type="submit" disabled={loading} style={{
@@ -95,7 +97,7 @@ export default function PathFinder() {
                     <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>
                       {i + 1}
                     </div>
-                    <div style={{ fontFamily: 'monospace', padding: '0.75rem 1rem', background: 'var(--bg-primary)', borderRadius: '8px', flex: 1, border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontFamily: 'monospace', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', flex: 1, border: '1px solid var(--border-glass)' }}>
                       {node}
                     </div>
                   </div>

@@ -50,7 +50,15 @@ load_dotenv()
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+# BUG-02 Fix: No default password fallback
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+if not NEO4J_PASSWORD:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "NEO4J_PASSWORD environment variable is not set. "
+        "Neo4j GDS features will fail. Copy .env.example to .env and set the password."
+    )
+    NEO4J_PASSWORD = ""  # Empty string — will fail on first use
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))  # src/features -> src -> root
@@ -273,8 +281,17 @@ def compute_burst_score(
     out_degree = edges.groupby("src").size()
     in_degree = edges.groupby("dst").size()
 
-    node_degree = features["txId"].map(
-        lambda x: out_degree.get(x, 0) + in_degree.get(x, 0)
+    # BUG-11 Fix: Vectorized lookup instead of slow .apply(lambda) on 200K rows
+    # The original lambda iterated row-by-row taking 30-60 seconds
+    node_degree = (
+        features["txId"]
+        .map(out_degree)
+        .fillna(0)
+        .astype(int)
+        + features["txId"]
+        .map(in_degree)
+        .fillna(0)
+        .astype(int)
     )
 
     # Combine: time step burstiness × node's own activity level (log-scaled)
@@ -498,7 +515,16 @@ def assemble_features(
 
     # Validate
     assert df.shape[0] == EXPECTED_NODES, f"Row count: {df.shape[0]} ≠ {EXPECTED_NODES}"
-    assert df.shape[1] == 177, f"Column count: {df.shape[1]} != 177"
+    # BUG-10 Fix: Compute expected column count dynamically instead of hardcoding 177
+    ENGINEERED_FEATURE_COLS = [
+        "tx_freq", "amount_mean", "amount_skew", "address_age",
+        "clustering_coeff", "burst_score", "pageRank", "communityId",
+    ]
+    _expected_col_count = len(["txId", "timeStep", "class"]) + len(FEATURE_NAMES) + len(ENGINEERED_FEATURE_COLS)
+    assert df.shape[1] == _expected_col_count, (
+        f"Column count: {df.shape[1]} != {_expected_col_count}. "
+        f"Columns present: {df.columns.tolist()}"
+    )
     assert df[engineered_cols].isna().sum().sum() == 0, "NaNs remain in engineered features"
 
     log.info(f"  ✓ Combined feature matrix: {df.shape}")

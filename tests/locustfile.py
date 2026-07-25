@@ -33,7 +33,17 @@ Usage:
 import random
 from locust import HttpUser, task, between, tag
 
-# Sample transaction IDs — replace with real Elliptic txIds from your loaded data
+# BUG-37 Fix: These sample transaction IDs should come from the actual loaded dataset.
+# The numeric placeholders below are ONLY valid if the Elliptic CSV rows were loaded
+# with their original numeric txIds. Verify with:
+#   WITH [1,2,3] AS ids UNWIND ids AS id MATCH (t:Transaction {txId: toString(id)}) RETURN count(t)
+#
+# To generate a real sample file:
+#   cypher-shell -u neo4j -p password \
+#     "MATCH (t:Transaction) RETURN t.txId AS txId LIMIT 200" | \
+#     tail -n +2 > tests/sample_tx_ids.txt
+#
+# Then load: SAMPLE_TX_IDS = open("tests/sample_tx_ids.txt").read().splitlines()
 SAMPLE_TX_IDS = [
     "1", "2", "3", "100", "500", "1000", "5000", "10000",
     "50000", "100000", "150000", "200000",

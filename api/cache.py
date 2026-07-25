@@ -10,11 +10,16 @@ Configuration:
     - /explain/{address} is allowed 5–15s (no caching — GNNExplainer is slow by design)
 
 Graceful degradation: if Redis is unavailable, all operations are no-ops.
+
+Fixes applied:
+  BUG-08: flush_scored_keys() added for targeted key deletion (avoids full flushdb)
+  BUG-28: Exponential backoff — does not retry connection on every request after failure
 """
 
 import os
 import json
 import logging
+import time
 import redis
 
 logger = logging.getLogger(__name__)
@@ -23,14 +28,23 @@ logger = logging.getLogger(__name__)
 class RedisCache:
     """Thread-safe Redis cache wrapper with graceful fallback."""
 
+    # BUG-28: Retry interval — wait at least this many seconds before attempting reconnect
+    _RETRY_INTERVAL = 30  # seconds
+
     def __init__(self, host: str = None, port: int = None):
         self.host = host or os.getenv("REDIS_HOST", "localhost")
         self.port = port or int(os.getenv("REDIS_PORT", 6379))
         self._client = None
         self._available = None
+        self._last_retry: float = 0  # BUG-28: timestamp of last failed connection attempt
 
     @property
     def client(self):
+        # BUG-28: If previously failed, don't retry until _RETRY_INTERVAL has elapsed
+        if self._available is False:
+            if time.time() - self._last_retry < self._RETRY_INTERVAL:
+                return None  # Skip retry — still in backoff window
+
         if self._client is None:
             try:
                 self._client = redis.Redis(
@@ -47,13 +61,14 @@ class RedisCache:
                 logger.warning("Redis unavailable (%s) — caching disabled.", e)
                 self._client = None
                 self._available = False
+                self._last_retry = time.time()  # BUG-28: record failure timestamp
         return self._client
 
     @property
     def is_available(self) -> bool:
         if self._available is None:
             _ = self.client  # trigger connection attempt
-        return self._available
+        return bool(self._available)
 
     def get(self, key: str) -> dict | None:
         """
@@ -91,13 +106,36 @@ class RedisCache:
         except redis.RedisError as e:
             logger.warning("Redis DELETE failed for key=%s: %s", key, e)
 
+    def flush_scored_keys(self, txid_list: list):
+        """
+        BUG-08 Fix: Delete ONLY the score cache keys for re-scored nodes.
+        Avoids the nuclear flushdb() which would wipe unrelated Redis data.
+
+        Args:
+            txid_list: List of txIds whose cache entries should be invalidated.
+        """
+        if not self.is_available:
+            return
+        try:
+            keys = [f"score:{txid}" for txid in txid_list]
+            if keys:
+                self.client.delete(*keys)
+            logger.info("Flushed %d score cache keys", len(keys))
+        except redis.RedisError as e:
+            logger.warning("Redis targeted flush failed: %s", e)
+
     def flush_all(self):
-        """Flush entire cache — use with caution."""
+        """
+        Flush entire cache database.
+        WARNING (BUG-08): This nukes ALL keys in the Redis DB, including
+        any non-score data. Prefer flush_scored_keys() for post-batch cleanup.
+        Use this only for full cache resets.
+        """
         if not self.is_available:
             return
         try:
             self.client.flushdb()
-            logger.info("Redis cache flushed.")
+            logger.info("Redis cache flushed (ALL keys).")
         except redis.RedisError as e:
             logger.warning("Redis FLUSHDB failed: %s", e)
 
@@ -118,3 +156,7 @@ class RedisCache:
             }
         except redis.RedisError:
             return {"status": "error"}
+
+
+# Module-level singleton for use in health checks
+cache = RedisCache()

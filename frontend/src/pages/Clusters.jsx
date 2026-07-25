@@ -24,32 +24,35 @@ export default function Clusters() {
         <h1 className="page-title">Top High-Risk Clusters</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
         {clusters.map((cluster, i) => (
           <Card 
             key={cluster.cluster_id} 
             hover 
             className={`delay-${(i % 5) * 100} animate-fade-in`}
-            style={{ cursor: 'pointer' }}
-            onClick={() => alert('Cluster detail view not fully implemented in React demo yet. You can build a dedicated route for this!')}
+            style={{ cursor: 'pointer', padding: '1.5rem' }}
+            onClick={() => alert('Cluster detail view not fully implemented in React demo yet.')}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                  <Share2 size={20} color="var(--accent-primary)" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ padding: '0.6rem', background: 'var(--accent-gradient)', borderRadius: '12px', color: '#fff', boxShadow: '0 4px 10px rgba(0,117,255,0.3)' }}>
+                  <Share2 size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.125rem' }}>Cluster #{cluster.cluster_id}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Cluster #{cluster.cluster_id}</h3>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem' }}>Identified by GraphSAGE</div>
                 </div>
-              </div>
-              <div style={{ padding: '0.25rem 0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600 }}>
-                Avg Risk: {cluster.avg_risk.toFixed(3)}
               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              <Users size={16} />
-              <span>{cluster.size} Connected Nodes</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                <Users size={16} />
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{cluster.size}</span> <span style={{ fontSize: '0.75rem' }}>Nodes</span>
+              </div>
+              <div style={{ padding: '0.35rem 0.85rem', background: 'var(--danger-gradient)', color: 'white', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, boxShadow: '0 4px 10px rgba(227,26,26,0.3)' }}>
+                Risk: {cluster.avg_risk.toFixed(3)}
+              </div>
             </div>
           </Card>
         ))}

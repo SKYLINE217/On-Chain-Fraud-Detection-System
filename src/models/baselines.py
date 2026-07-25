@@ -288,12 +288,12 @@ def train_xgboost(
         logger.info(f"XGBoost scale_pos_weight = {scale_pos_weight:.2f}")
 
     logger.info("Training XGBoost...")
+    # BUG-23 Fix: use_label_encoder was deprecated in XGBoost 1.6 and removed in 2.0
     model = XGBClassifier(
         n_estimators=n_estimators,
         scale_pos_weight=scale_pos_weight,
         eval_metric="aucpr",
         random_state=42,
-        use_label_encoder=False,
         n_jobs=-1,
     )
     model.fit(X_train, y_train)

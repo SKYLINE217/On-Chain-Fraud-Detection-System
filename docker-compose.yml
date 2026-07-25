@@ -1,5 +1,8 @@
 version: '3.8'
 
+# BUG-31 Fix: Added healthchecks for neo4j and redis services.
+# The API now only starts after neo4j is healthy (prevents startup race conditions).
+
 services:
   neo4j:
     image: neo4j:5
@@ -11,11 +14,25 @@ services:
       - NEO4J_PLUGINS=["apoc", "graph-data-science"]
     volumes:
       - neo4j_data:/data
+    # BUG-31: Health check using cypher-shell
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 45s
 
   cache:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    # BUG-31: Health check using redis-cli ping
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   api:
     build: .
@@ -27,9 +44,14 @@ services:
       - NEO4J_PASSWORD=password
       - REDIS_HOST=cache
       - REDIS_PORT=6379
+      # BUG-01: Set ALLOWED_ORIGINS to restrict CORS in production
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    # BUG-31: API waits for neo4j and redis to be healthy before starting
     depends_on:
-      - neo4j
-      - cache
+      neo4j:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
 
   frontend:
     image: node:20-alpine

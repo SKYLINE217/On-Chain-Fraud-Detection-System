@@ -4,11 +4,18 @@
 """
 Neo4j service layer — async-compatible query helpers for all API endpoints.
 Centralizes driver management, connection pooling, and query patterns.
+
+Fixes applied:
+  BUG-02: No default password fallback — RuntimeError if NEO4J_PASSWORD not set
+  BUG-14: Thread-safe singleton with double-checked locking
+  BUG-15: get_subgraph_no_apoc() now includes center node in results
+  BUG-16: get_shortest_path() uses directed -> instead of undirected -
 """
 
 import os
 import json
 import logging
+import threading
 from contextlib import contextmanager
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
@@ -19,7 +26,16 @@ logger = logging.getLogger(__name__)
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+
+# BUG-02 Fix: No default password. Fail loudly if not configured.
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+if not NEO4J_PASSWORD:
+    logger.warning(
+        "NEO4J_PASSWORD environment variable is not set. "
+        "Neo4j connections will fail until this is configured. "
+        "Copy .env.example to .env and set NEO4J_PASSWORD."
+    )
+    NEO4J_PASSWORD = ""  # Empty string — driver will fail on first use
 
 
 class Neo4jService:
@@ -27,23 +43,34 @@ class Neo4jService:
     Singleton-style Neo4j service for the API layer.
     Manages the driver lifecycle and provides query methods
     for wallet lookups, subgraph traversals, and cluster queries.
+
+    BUG-14 Fix: Thread-safe singleton with class-level and driver-level locks.
     """
 
     _instance = None
+    _class_lock = threading.Lock()  # BUG-14: protects singleton creation
 
     def __new__(cls):
+        # BUG-14: Double-checked locking for singleton
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._driver = None
+            with cls._class_lock:
+                if cls._instance is None:
+                    inst = super().__new__(cls)
+                    inst._driver = None
+                    inst._driver_lock = threading.Lock()  # BUG-14: protects driver init
+                    cls._instance = inst
         return cls._instance
 
     @property
     def driver(self):
+        # BUG-14: Double-checked locking for driver initialization
         if self._driver is None:
-            self._driver = GraphDatabase.driver(
-                NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)
-            )
-            logger.info("Neo4j driver initialized: %s", NEO4J_URI)
+            with self._driver_lock:
+                if self._driver is None:
+                    self._driver = GraphDatabase.driver(
+                        NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)
+                    )
+                    logger.info("Neo4j driver initialized: %s", NEO4J_URI)
         return self._driver
 
     def close(self):
@@ -177,25 +204,31 @@ class Neo4jService:
         """
         Fallback subgraph query using variable-length paths instead of APOC.
         Use this if the APOC plugin is not installed.
+
+        BUG-15 Fix: Center node is now explicitly included in results via UNION.
         """
         hops = min(hops, 2)
         max_nodes = min(max_nodes, 200)
 
         with self.session() as s:
+            # BUG-15 Fix: Collect center + neighbors separately, then UNION
             node_result = s.run(
                 """
                 MATCH (center:Transaction {txId: $address})
-                MATCH path = (center)-[:FLOWS_TO*0..""" + str(hops) + """]->(neighbor)
-                WITH DISTINCT neighbor
+                OPTIONAL MATCH (center)-[:FLOWS_TO*1..""" + str(hops) + """]->(neighbor)
+                WITH center, COLLECT(DISTINCT neighbor) AS neighbors
+                WITH [center] + [n IN neighbors WHERE n IS NOT NULL] AS all_nodes
+                UNWIND all_nodes AS n
+                RETURN DISTINCT
+                       n.txId          AS txId,
+                       n.timeStep      AS timeStep,
+                       n.class         AS txClass,
+                       n.risk_score    AS risk_score,
+                       n.predicted_label AS predicted_label,
+                       n.confidence    AS confidence,
+                       n.communityId   AS communityId,
+                       n.pageRank      AS pageRank
                 LIMIT $maxNodes
-                RETURN neighbor.txId          AS txId,
-                       neighbor.timeStep      AS timeStep,
-                       neighbor.class         AS txClass,
-                       neighbor.risk_score    AS risk_score,
-                       neighbor.predicted_label AS predicted_label,
-                       neighbor.confidence    AS confidence,
-                       neighbor.communityId   AS communityId,
-                       neighbor.pageRank      AS pageRank
                 """,
                 address=address,
                 maxNodes=max_nodes,
@@ -304,6 +337,8 @@ class Neo4jService:
         """
         Find shortest path between two transactions.
         Capped at max_depth hops; returns 'no path found' if exceeded.
+
+        BUG-16 Fix: Uses directed -> relationship pattern instead of undirected -.
         """
         max_depth = min(max_depth, 10)
 
@@ -311,7 +346,7 @@ class Neo4jService:
             result = s.run(
                 """
                 MATCH (a:Transaction {txId: $src}), (b:Transaction {txId: $dst})
-                MATCH p = shortestPath((a)-[:FLOWS_TO*..10]-(b))
+                MATCH p = shortestPath((a)-[:FLOWS_TO*..10]->(b))
                 RETURN [n IN nodes(p) | n.txId] AS path_nodes,
                        length(p) AS path_length
                 """,

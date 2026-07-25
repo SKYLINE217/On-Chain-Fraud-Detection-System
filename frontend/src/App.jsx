@@ -19,19 +19,19 @@ function Sidebar() {
       
       <div className="nav-links">
         <NavLink to="/" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <LayoutDashboard size={20} />
+          <div className="nav-item-icon"><LayoutDashboard size={18} /></div>
           Overview
         </NavLink>
         <NavLink to="/clusters" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Share2 size={20} />
+          <div className="nav-item-icon"><Share2 size={18} /></div>
           Clusters
         </NavLink>
         <NavLink to="/wallet" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Search size={20} />
+          <div className="nav-item-icon"><Search size={18} /></div>
           Wallet Lookup
         </NavLink>
         <NavLink to="/paths" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Map size={20} />
+          <div className="nav-item-icon"><Map size={18} /></div>
           Path Finder
         </NavLink>
       </div>
