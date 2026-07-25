@@ -59,3 +59,6 @@ Thumbs.db
 
 # ── PyArmor ──
 pyarmor_runtime_*/
+
+backend/data/
+backend/checkpoints/
