@@ -16,10 +16,10 @@ export const fastApiProxy = createProxyMiddleware({
     },
     error: (err, req, res) => {
       logger.error(`Proxy Error: ${err.message}`);
-      res.writeHead(503, {
+      (res as any).writeHead(503, {
         'Content-Type': 'application/json',
       });
-      res.end(JSON.stringify({ error: 'Backend service unavailable' }));
+      (res as any).end(JSON.stringify({ error: 'Backend service unavailable' }));
     }
   }
 });

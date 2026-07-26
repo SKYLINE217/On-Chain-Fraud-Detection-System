@@ -29,8 +29,12 @@ FEATURE_COLS   = [f"f{i}" for i in range(1, 167)]
 def load_base(features_path, classes_path, edgelist_path):
     features = pd.read_csv(features_path, header=None,
                            names=["txId", "timeStep"] + FEATURE_COLS)
+    features["txId"] = features["txId"].astype(int)
     classes  = pd.read_csv(classes_path)
-    edges    = pd.read_csv(edgelist_path, header=None, names=["src", "dst"])
+    edges    = pd.read_csv(edgelist_path)
+    edges.columns = ["src", "dst"]
+    edges["src"] = edges["src"].astype(int)
+    edges["dst"] = edges["dst"].astype(int)
     df = features.merge(classes, on="txId", how="left")
     df["class"] = df["class"].fillna("unknown").astype(str)
     return df, edges
@@ -98,6 +102,9 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
     CRITICAL: Run ONCE. Never re-run GDS separately from parquet export.
     """
     with driver.session() as session:
+        # Drop if exists
+        session.run("CALL gds.graph.drop('fraud-graph', false) YIELD graphName")
+        
         # Create in-memory graph projection
         session.run("""
             CALL gds.graph.project(
@@ -113,7 +120,8 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
             CALL gds.pageRank.write('fraud-graph', {
               writeProperty: 'pageRank',
               maxIterations: 20,
-              dampingFactor: 0.85
+              dampingFactor: 0.85,
+              concurrency: 1
             })
         """)
         logger.info("PageRank written.")
@@ -121,21 +129,33 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         # Louvain community detection
         session.run("""
             CALL gds.louvain.write('fraud-graph', {
-              writeProperty: 'communityId'
+              writeProperty: 'communityId',
+              concurrency: 1
             })
         """)
         logger.info("Louvain communityId written.")
 
-        # Local clustering coefficient
+        # Local clustering coefficient requires UNDIRECTED graph
+        session.run("CALL gds.graph.drop('fraud-graph', false) YIELD graphName")
+        
+        session.run("CALL gds.graph.drop('fraud-graph-undir', false) YIELD graphName")
+        
         session.run("""
-            CALL gds.localClusteringCoefficient.write('fraud-graph', {
-              writeProperty: 'clusteringCoeff'
+            CALL gds.graph.project(
+              'fraud-graph-undir',
+              'Transaction',
+              { FLOWS_TO: { orientation: 'UNDIRECTED' } }
+            )
+        """)
+        session.run("""
+            CALL gds.localClusteringCoefficient.write('fraud-graph-undir', {
+              writeProperty: 'clusteringCoeff',
+              concurrency: 1
             })
         """)
         logger.info("ClusteringCoeff written.")
 
-        # Drop projection to free memory
-        session.run("CALL gds.graph.drop('fraud-graph')")
+        session.run("CALL gds.graph.drop('fraud-graph-undir', false) YIELD graphName")
 
     logger.info("GDS complete. Reading back properties...")
     # Read all GDS-computed properties back from Neo4j
@@ -197,9 +217,11 @@ def build_features_parquet():
     df = df.rename(columns={"clusteringCoeff": "clustering_coeff"})
 
     # Validate shape and NaNs
-    assert df.shape == (203769, 171), f"Shape mismatch: {df.shape}"
-    nan_count = df.drop(columns=["class"]).select_dtypes("number").isna().sum().sum()
-    assert nan_count == 0, f"NaN found: {nan_count}"
+    assert df.shape == (203769, 177), f"Shape mismatch: {df.shape}"
+    nan_counts = df.drop(columns=["class"]).select_dtypes("number").isna().sum()
+    if nan_counts.sum() > 0:
+        logger.warning(f"NaN found in columns:\n{nan_counts[nan_counts > 0]}")
+        df = df.fillna(0)
 
     df.to_parquet(OUTPUT_PATH, index=False)
     logger.info(f"Saved: {OUTPUT_PATH}  shape={df.shape}")

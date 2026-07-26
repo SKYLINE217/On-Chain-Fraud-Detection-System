@@ -18,7 +18,7 @@ router.post('/login', (req, res) => {
       const token = jwt.sign(
         { username, role: 'admin' },
         config.JWT_SECRET,
-        { expiresIn: config.JWT_EXPIRES_IN }
+        { expiresIn: config.JWT_EXPIRES_IN as any }
       );
       res.json({ token });
     } else {

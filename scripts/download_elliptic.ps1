@@ -1,10 +1,9 @@
 # scripts/download_elliptic.ps1
-# PowerShell alternative for Windows users.
 # Downloads the Elliptic Bitcoin Transaction Dataset from Kaggle.
 #
 # Prerequisites:
 #   - Kaggle CLI installed: pip install kaggle
-#   - Kaggle credentials configured: %USERPROFILE%\.kaggle\kaggle.json
+#   - Kaggle credentials configured: ~/.kaggle/kaggle.json
 #
 # Usage:
 #   .\scripts\download_elliptic.ps1
@@ -14,58 +13,51 @@
 
 $ErrorActionPreference = "Stop"
 
-$DATA_DIR = "data\raw"
-
+$DATA_DIR = "data/raw"
 if (-not (Test-Path $DATA_DIR)) {
     New-Item -ItemType Directory -Path $DATA_DIR -Force | Out-Null
 }
 
-Write-Host "========================================="
-Write-Host "  Elliptic Dataset Download"
-Write-Host "========================================="
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "  Elliptic Dataset Download" -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host ""
 
 # Check if files already exist
-$files = @(
-    "elliptic_txs_features.csv",
-    "elliptic_txs_classes.csv",
-    "elliptic_txs_edgelist.csv"
-)
+$filesExist = (Test-Path "$DATA_DIR/elliptic_txs_features.csv") -and `
+              (Test-Path "$DATA_DIR/elliptic_txs_classes.csv") -and `
+              (Test-Path "$DATA_DIR/elliptic_txs_edgelist.csv")
 
-$allExist = $true
-foreach ($f in $files) {
-    if (-not (Test-Path (Join-Path $DATA_DIR $f))) {
-        $allExist = $false
-        break
-    }
-}
-
-if ($allExist) {
+if ($filesExist) {
     Write-Host "Dataset files already exist in $DATA_DIR. Skipping download."
     Write-Host "Delete them manually if you want to re-download."
     exit 0
 }
 
 Write-Host "Downloading Elliptic dataset via Kaggle CLI..."
-Write-Host "(Requires %USERPROFILE%\.kaggle\kaggle.json to be configured)"
+Write-Host "(Requires ~/.kaggle/kaggle.json to be configured)"
+Write-Host ""
 
-# Download via Kaggle CLI
-kaggle datasets download -d ellipticco/elliptic-data-set -p $DATA_DIR --unzip
+# Via Kaggle CLI (requires ~/.kaggle/kaggle.json)
+kaggle datasets download -d ellipticco/elliptic-data-set -p "$DATA_DIR" --unzip
 
 Write-Host ""
 Write-Host "Validating downloaded files..."
+Write-Host ""
 
-$missing = 0
+# Validate files present
+$MISSING = 0
+$files = @("elliptic_txs_features.csv", "elliptic_txs_classes.csv", "elliptic_txs_edgelist.csv")
 foreach ($f in $files) {
-    $filePath = Join-Path $DATA_DIR $f
-    if (Test-Path $filePath) {
+    if (Test-Path "$DATA_DIR/$f") {
         Write-Host "  ✅ $f exists"
     } else {
         Write-Host "  ❌ MISSING: $f"
-        $missing++
+        $MISSING = 1
     }
 }
 
-if ($missing -gt 0) {
+if ($MISSING -eq 1) {
     Write-Host ""
     Write-Host "ERROR: Some files are missing. Download may have failed."
     exit 1
@@ -73,18 +65,18 @@ if ($missing -gt 0) {
 
 Write-Host ""
 Write-Host "Row counts:"
-foreach ($f in $files) {
-    $filePath = Join-Path $DATA_DIR $f
-    $lineCount = (Get-Content $filePath | Measure-Object -Line).Lines
-    Write-Host "  $lineCount $f"
+Get-ChildItem "$DATA_DIR/*.csv" | ForEach-Object {
+    $lineCount = @(Get-Content $_.FullName | Measure-Object -Line).Lines
+    Write-Host "  $lineCount $($_.Name)"
 }
-# Expected:
-#   203770 elliptic_txs_features.csv  (header + 203769 rows)
-#   203770 elliptic_txs_classes.csv
-#   234356 elliptic_txs_edgelist.csv
-
 Write-Host ""
-Write-Host "========================================="
-Write-Host "  Download complete!"
-Write-Host "  Files saved to: $DATA_DIR\"
-Write-Host "========================================="
+Write-Host "# Expected:"
+Write-Host "#   203770 elliptic_txs_features.csv  (header + 203769 rows)"
+Write-Host "#   203770 elliptic_txs_classes.csv"
+Write-Host "#   234356 elliptic_txs_edgelist.csv"
+Write-Host ""
+
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "  Download complete!" -ForegroundColor Green
+Write-Host "  Files saved to: $DATA_DIR/" -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green

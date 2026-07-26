@@ -39,6 +39,7 @@ def load_nodes(driver):
         FEATURES_PATH, header=None,
         names=["txId", "timeStep"] + FEATURE_COLS
     )
+    features_df["txId"] = features_df["txId"].astype(int)
 
     logger.info("Loading classes CSV...")
     classes_df = pd.read_csv(CLASSES_PATH)
@@ -76,7 +77,10 @@ def load_nodes(driver):
 def load_edges(driver):
     """Load FLOWS_TO edges."""
     logger.info("Loading edgelist CSV...")
-    edges_df = pd.read_csv(EDGELIST_PATH, header=None, names=["src", "dst"])
+    edges_df = pd.read_csv(EDGELIST_PATH)
+    edges_df.columns = ["src", "dst"]
+    edges_df["src"] = edges_df["src"].astype(int)
+    edges_df["dst"] = edges_df["dst"].astype(int)
     records = edges_df.to_dict("records")
 
     logger.info(f"Loading {len(records)} edges into Neo4j...")
