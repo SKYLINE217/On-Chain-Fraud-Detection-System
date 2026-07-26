@@ -1,17 +1,20 @@
-# src/models/gat.py
 """
-Graph Attention Network for on-chain fraud detection.
-See ml_models.md §3 for full reference.
+Graph Attention Network (GAT) for on-chain fraud detection.
 
 Architecture:
-    GATConv(in → hidden, heads=4) → concatenation → ELU → Dropout
-    GATConv(hidden*4 → out, heads=1, concat=False)
+    GATConv(in -> hidden, heads=4) -> concatenation -> ELU -> Dropout
+    GATConv(hidden*4 -> out, heads=1, concat=False)
 
 Key advantage: attention weights are a free interpretability signal.
+Attention weights from conv1 indicate which neighbors each node attends to.
+Extract via return_attention=True.
 
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
+Compliance Disclaimer:
+    This system is a research and portfolio demonstration only. It is NOT
+    a certified AML/CFT compliance tool, a regulated financial product, or
+    a legally defensible fraud-detection system.
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,6 +22,17 @@ from torch_geometric.nn import GATConv
 
 
 class GAT(nn.Module):
+    """
+    Graph Attention Network for on-chain fraud detection.
+
+    Architecture:
+        GATConv(in -> hidden, heads=4) -> concatenation -> ELU -> Dropout
+        GATConv(hidden*4 -> out, heads=1, concat=False)
+
+    Key advantage: attention weights are a free interpretability signal.
+    Attention weights from conv1 indicate which neighbors each node attends to.
+    Extract via return_attention_weights=True.
+    """
 
     def __init__(
         self,
@@ -76,11 +90,3 @@ class GAT(nn.Module):
             x = F.dropout(x, p=self.dropout, training=self.training)
             x = self.conv2(x, edge_index)
             return x
-
-    def get_embedding(
-        self, x: torch.Tensor, edge_index: torch.Tensor
-    ) -> torch.Tensor:
-        """Return hidden layer output for embedding storage."""
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = F.elu(self.conv1(x, edge_index))
-        return x  # shape: (N, hidden_channels * heads)

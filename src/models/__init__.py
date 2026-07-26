@@ -1,1 +1,1 @@
-# src/models — GNN model definitions
+# empty init

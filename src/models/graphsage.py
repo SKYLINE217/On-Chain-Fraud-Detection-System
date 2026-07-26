@@ -1,18 +1,24 @@
-# src/models/graphsage.py
 """
 GraphSAGE node classifier for on-chain fraud detection.
-See ml_models.md §2 for full reference.
 
 Architecture:
-    SAGEConv(in → hidden) + BN + ReLU + Dropout
-    [SAGEConv(hidden → hidden) + BN + ReLU + Dropout] × (num_layers - 2)
-    SAGEConv(hidden → out)
+    SAGEConv(in -> hidden) + BN + ReLU + Dropout
+    [SAGEConv(hidden -> hidden) + BN + ReLU + Dropout] x (num_layers - 2)
+    SAGEConv(hidden -> out)
 
 Production model: mean aggregation (inductive, generalizes to unseen nodes).
 
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
+Why GraphSAGE over GCN: GraphSAGE is inductive -- it learns aggregation
+functions that generalize to unseen nodes. This is critical because new
+wallet addresses appear constantly. GCN is transductive (requires all nodes
+at training time).
+
+Compliance Disclaimer:
+    This system is a research and portfolio demonstration only. It is NOT
+    a certified AML/CFT compliance tool, a regulated financial product, or
+    a legally defensible fraud-detection system.
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,6 +26,16 @@ from torch_geometric.nn import SAGEConv
 
 
 class GraphSAGE(nn.Module):
+    """
+    GraphSAGE node classifier for on-chain fraud detection.
+
+    Architecture:
+        SAGEConv(in -> hidden) + BN + ReLU + Dropout
+        [SAGEConv(hidden -> hidden) + BN + ReLU + Dropout] x (num_layers - 2)
+        SAGEConv(hidden -> out)
+
+    Production model: mean aggregation (inductive, generalizes to unseen nodes).
+    """
 
     def __init__(
         self,
@@ -47,7 +63,7 @@ class GraphSAGE(nn.Module):
             self.convs.append(SAGEConv(hidden_channels, hidden_channels, aggr=aggr))
             self.bns.append(nn.BatchNorm1d(hidden_channels))
 
-        # Output layer (no BN, no activation — logits for CrossEntropyLoss)
+        # Output layer (no BN, no activation -- logits for CrossEntropyLoss)
         self.convs.append(SAGEConv(hidden_channels, out_channels, aggr=aggr))
 
     def forward(
@@ -58,7 +74,7 @@ class GraphSAGE(nn.Module):
             x: Node feature matrix (N, in_channels) float32
             edge_index: Edge index (2, E) long
         Returns:
-            logits: (N, out_channels) float32 — NOT softmaxed
+            logits: (N, out_channels) float32 -- NOT softmaxed
         """
         for i in range(self.num_layers - 1):
             x = self.convs[i](x, edge_index)

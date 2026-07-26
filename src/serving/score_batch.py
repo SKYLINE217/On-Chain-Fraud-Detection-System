@@ -38,32 +38,32 @@ MODEL_CONFIG     = os.environ.get("MODEL_CONFIG", "checkpoints/model_config.json
 BATCH_SIZE = 1000  # Neo4j write batch size
 
 
-def load_model_from_config(checkpoint_path: str, config_path: str):
+def load_model_from_config(checkpoint_path: str, config_path: str) -> tuple[torch.nn.Module, dict]:
     """Load model using model_config.json schema (see ml_models.md §9.3)."""
     with open(config_path) as f:
         config = json.load(f)
 
     model_type = config["model_type"]
-    if model_type == "GraphSAGE":
+    if model_type.lower() == "graphsage":
         model = GraphSAGE(
             in_channels=config["in_channels"],
             hidden_channels=config["hidden_channels"],
             out_channels=config["out_channels"],
             num_layers=config["num_layers"],
-            dropout=config["dropout"],
+            dropout=config.get("dropout", 0.0),
             aggr=config.get("aggr", "mean"),
         )
-    elif model_type == "GAT":
+    elif model_type.lower() == "gat":
         model = GAT(
             in_channels=config["in_channels"],
             hidden_channels=config["hidden_channels"],
             out_channels=config["out_channels"],
-            dropout=config["dropout"],
+            dropout=config.get("dropout", 0.0),
         )
     else:
         raise ValueError(f"Unknown model_type: {model_type}")
 
-    state_dict = torch.load(checkpoint_path, map_location="cpu")
+    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     model.load_state_dict(state_dict)
     model.eval()
     return model, config

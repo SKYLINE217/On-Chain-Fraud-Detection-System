@@ -1,18 +1,20 @@
-# onchain-fraud-gnn — Python 3.11 dependencies
-# Person A: Data / Graph / Infra
-# Generated from person_a_stages.md §1.1
+# onchain-fraud-gnn — Combined Python dependencies
+# Person A (Infra/Graph) & Person B (ML/Explainability)
 
 # PyTorch + PyG
 torch==2.3.0
 torch-geometric==2.5.3
 
-# Graph database
-neo4j==5.20.0
-
-# Data processing
+# Core ML & Graph
+scikit-learn==1.5.0
+xgboost==2.0.3
 pandas==2.2.2
+numpy>=1.26.0
 pyarrow==16.1.0
 scipy>=1.13.0
+
+# Graph database
+neo4j==5.20.0
 
 # API framework
 fastapi==0.111.0
@@ -20,16 +22,22 @@ uvicorn[standard]==0.30.0
 pydantic==2.7.0
 slowapi>=0.1.9
 
-# Cache
+# Cache & Environment
 redis==5.0.4
-
-# HTTP + config
 requests==2.32.0
 python-dotenv==1.0.1
 
-# Testing
+# Experiment tracking & Explainability
+wandb==0.17.0
+shap==0.45.0
+
+# Visualization & Utils
+matplotlib==3.9.0
+seaborn==0.13.2
+joblib>=1.4.0
+
+# Testing & Load
 pytest==8.2.0
 httpx==0.27.0
-
-# Load testing
 locust==2.29.0
+ruff>=0.4.0
