@@ -1,0 +1,38 @@
+# Internal planning & instruction docs — never pushed
+.project-docs/
+
+# Disposable cross-person mocks
+mocks/
+
+# Secrets
+.env
+*.key
+*.pem
+kaggle.json
+*_secrets*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/client/dist/
+frontend/server/dist/
+
+# Experiment tracking / large artifacts
+wandb/
+*.ckpt
+*.pt
+*.pkl
+!model_config.json
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/
+
+# Planning docs (kept locally in 'md file/' — never pushed)
+md file/
