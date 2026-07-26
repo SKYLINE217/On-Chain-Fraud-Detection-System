@@ -1,0 +1,12 @@
+.git
+.env
+.pytest_cache
+__pycache__
+*.pyc
+frontend/client/node_modules
+frontend/server/node_modules
+node_modules
+md
+mocks
+docs
+data/raw
