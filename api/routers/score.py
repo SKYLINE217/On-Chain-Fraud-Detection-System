@@ -48,7 +48,7 @@ async def batch_score(
                 """,
                 addresses=addresses
             )
-            records = [r.data() for r in await result.data()] # await result.data() is a mockup fix for testing, driver behavior depends on driver
+            records = [r.data() async for r in result]
 
     # Fill in nulls for addresses not found
     found = {r.get("address") for r in records}

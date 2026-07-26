@@ -1,5 +1,6 @@
 # api/routers/explain.py
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Path
+from typing import Annotated
 # Using Any instead of neo4j.AsyncDriver for typing if neo4j is missing.
 try:
     from neo4j import AsyncDriver
@@ -41,20 +42,32 @@ _shap_tree_explainer = None
 _txid_to_idx: dict = {}
 
 
-def _lazy_load():
-    global _model, _data, _gnn_explainer, _shap_tree_explainer, _txid_to_idx
-    if _model is None:
+import asyncio
+_load_lock = asyncio.Lock()
+_model_version = "GNNExplainer (PyG) + SHAP TreeExplainer (XGBoost)"
+
+async def _lazy_load():
+    global _model, _data, _gnn_explainer, _shap_tree_explainer, _txid_to_idx, _model_version
+    if _model is not None:
+        return
+    async with _load_lock:
+        if _model is not None:
+            return
         import pandas as pd
         
         checkpoint_path = os.environ.get("MODEL_CHECKPOINT", "checkpoints/best_model.pt")
         config_path = os.environ.get("MODEL_CONFIG", "checkpoints/model_config.json")
         
-        _model, _ = load_model_from_config(checkpoint_path, config_path)
+        _model, config = load_model_from_config(checkpoint_path, config_path)
+        _model_version = f"{_model_version} (Model: {config.get('model_type', 'unknown')})"
         
-        try:
+        if os.environ.get("ENV") == "production":
             _data = load_pyg_data()
-        except FileNotFoundError:
-            _data = load_pyg_data(parquet_path="mocks/person_a/mock_features_combined.parquet", mock_edges=True)
+        else:
+            try:
+                _data = load_pyg_data()
+            except FileNotFoundError:
+                _data = load_pyg_data(parquet_path="mocks/person_a/mock_features_combined.parquet", mock_edges=True)
             
         try:
             df = pd.read_parquet("data/processed/features_combined.parquet", columns=["txId"])
@@ -73,14 +86,19 @@ def _lazy_load():
             _shap_tree_explainer = None
 
 
+AddressParam = Annotated[
+    str,
+    Path(pattern=r'^[a-zA-Z0-9_\-]{1,100}$', description="Transaction address")
+]
+
 @router.post("/{address}", response_model=ExplainResponse)
-async def explain_address(address: str, driver: AsyncDriver = Depends(get_neo4j_driver)):
+async def explain_address(address: AddressParam, driver: AsyncDriver = Depends(get_neo4j_driver)):
     """
     On-demand GNNExplainer + SHAP for a single address.
     Expected latency: 5–15s. Always includes latency_warning in response.
     NOT cached — instance-specific.
     """
-    _lazy_load()
+    await _lazy_load()
 
     if address not in _txid_to_idx:
         raise HTTPException(status_code=404, detail=f"Address not found: {address}")
@@ -118,7 +136,7 @@ async def explain_address(address: str, driver: AsyncDriver = Depends(get_neo4j_
                 """,
                 address=address
             )
-            neighbors = [r.data() for r in await result.data()] # Handle mock appropriately, but async driver works like this
+            neighbors = [r.data() async for r in result]
 
     # 4. Map important edges to neighbor info
     edge_idx = _data.edge_index
@@ -132,8 +150,25 @@ async def explain_address(address: str, driver: AsyncDriver = Depends(get_neo4j_
 
     # Build edge_mask_top for rationale
     edge_mask_top = []
-    for n in neighbors[:3]:
-        importance = top_k_edge_map.get(0, 0.0)  # simplified; use real idx in prod
+    for j, n in enumerate(neighbors[:3]):
+        importance = 0.0
+        neighbor_idx = _txid_to_idx.get(n["neighbor_id"])
+        if neighbor_idx is not None:
+            # Find edge index in edge_index tensor
+            mask = ((edge_idx[0] == node_idx) & (edge_idx[1] == neighbor_idx)) | \
+                   ((edge_idx[1] == node_idx) & (edge_idx[0] == neighbor_idx))
+            matched = mask.nonzero(as_tuple=True)[0]
+            if len(matched) > 0:
+                # Find the corresponding importance score
+                try:
+                    # top_edge_indices contains the actual indices in the edge_index tensor
+                    # top_edge_values contains the corresponding scores
+                    # We need to find if our matched edge is in top_edge_indices
+                    idx_in_top = (gnn_result["top_edge_indices"] == matched[0]).nonzero(as_tuple=True)[0]
+                    if len(idx_in_top) > 0:
+                        importance = gnn_result["top_edge_values"][idx_in_top[0].item()].item()
+                except Exception:
+                    pass
         edge_mask_top.append((n["neighbor_id"], importance, n.get("label", "unknown")))
 
     # 5. Get predicted label for rationale
@@ -166,7 +201,7 @@ async def explain_address(address: str, driver: AsyncDriver = Depends(get_neo4j_
             ],
         },
         "rationale": rationale,
-        "explanation_model": "GNNExplainer (PyG) + SHAP TreeExplainer (XGBoost)",
+        "explanation_model": _model_version,
         "latency_warning": (
             f"Explanation generated in {elapsed:.1f}s. "
             "GNNExplainer is computationally intensive; 5–15s is expected."

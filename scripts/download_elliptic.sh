@@ -57,6 +57,34 @@ if [ "$MISSING" -eq 1 ]; then
 fi
 
 echo ""
+echo "Verifying SHA-256 hashes (BC-02)..."
+
+# Note: Update these placeholders with the actual Kaggle file hashes
+declare -A EXPECTED_HASHES
+EXPECTED_HASHES["elliptic_txs_features.csv"]="EXPECTED_HASH_FEATURES"
+EXPECTED_HASHES["elliptic_txs_classes.csv"]="EXPECTED_HASH_CLASSES"
+EXPECTED_HASHES["elliptic_txs_edgelist.csv"]="EXPECTED_HASH_EDGELIST"
+
+HASH_FAILED=0
+for f in elliptic_txs_features.csv elliptic_txs_classes.csv elliptic_txs_edgelist.csv; do
+    actual=$(sha256sum "$DATA_DIR/$f" | awk '{print $1}')
+    expected=${EXPECTED_HASHES[$f]}
+    if [[ "$expected" == EXPECTED_HASH* ]]; then
+        echo "  ⚠️ HASH SKIPPED (Placeholder): $f -> $actual"
+    elif [ "$expected" == "$actual" ]; then
+        echo "  ✅ HASH OK: $f"
+    else
+        echo "  ❌ HASH MISMATCH: $f (Expected $expected, got $actual)"
+        HASH_FAILED=1
+    fi
+done
+
+if [ "$HASH_FAILED" -eq 1 ]; then
+    echo "ERROR: Data integrity verification failed. Potential MITM or corrupted download."
+    exit 1
+fi
+
+echo ""
 echo "Row counts:"
 wc -l "$DATA_DIR"/*.csv
 # Expected:

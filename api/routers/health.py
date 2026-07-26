@@ -8,11 +8,19 @@ demonstration only. Not a certified AML/CFT compliance tool.
 from fastapi import APIRouter, Depends
 from api.deps import get_neo4j_driver, get_redis
 
+from api.middleware.auth import verify_api_key
+
 router = APIRouter()
 
 
 @router.get("/health")
-async def health_check(
+async def health_check():
+    """Public endpoint: minimal info."""
+    return {"status": "ok"}
+
+
+@router.get("/health/detailed", dependencies=[Depends(verify_api_key)])
+async def health_check_detailed(
     driver=Depends(get_neo4j_driver),
     redis=Depends(get_redis),
 ):

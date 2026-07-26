@@ -21,11 +21,15 @@ from api.middleware.auth import verify_api_key
 
 logger = logging.getLogger(__name__)
 
+import os
+
 app = FastAPI(
     title="onchain-fraud-gnn API",
     description="On-chain fraud/AML detection using Graph Neural Networks. Research/portfolio only.",
     version="2.0.0",
-    docs_url="/docs",  # OpenAPI docs (dev only in production)
+    docs_url="/docs" if os.environ.get("ENV") != "production" else None,
+    redoc_url="/redoc" if os.environ.get("ENV") != "production" else None,
+    openapi_url="/openapi.json" if os.environ.get("ENV") != "production" else None,
 )
 
 # ── CORS (locked to BFF only) ──────────────────────────

@@ -13,11 +13,11 @@ export const apiClient = axios.create({
   },
 });
 
-// Add a request interceptor to inject the token for admin routes
+// Add a request interceptor to inject the token for all routes
 apiClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
-    if (token && config.url?.startsWith('/admin')) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

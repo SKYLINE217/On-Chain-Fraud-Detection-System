@@ -25,15 +25,15 @@ BASE_URL = "https://api.etherscan.io/api"
 RATE_LIMIT_SLEEP = 0.25  # 4 req/s on free tier
 
 
-def get_tx_value(tx_hash: str) -> float | None:
+def get_tx_value(session: requests.Session, tx_hash: str) -> float | None:
     """Fetch ETH value for a transaction hash. Returns None on failure."""
     try:
-        r = requests.get(BASE_URL, params={
+        r = session.get(BASE_URL, params={
             "module": "proxy",
             "action": "eth_getTransactionByHash",
             "txhash": tx_hash,
             "apikey": ETHERSCAN_API_KEY,
-        }, timeout=10)
+        }, timeout=(3.0, 10.0)) # connect timeout 3s, read timeout 10s
         data = r.json().get("result")
         if data and data.get("value"):
             return int(data["value"], 16) / 1e18  # Wei → ETH
@@ -45,12 +45,13 @@ def get_tx_value(tx_hash: str) -> float | None:
 def enrich_sample(txids: list[str], output_path: str = "data/raw/etherscan_amounts.csv"):
     """Pull amounts for a sample and save to CSV."""
     results = []
-    for i, tx in enumerate(txids):
-        val = get_tx_value(tx)
-        results.append({"txId": tx, "eth_value": val})
-        time.sleep(RATE_LIMIT_SLEEP)
-        if i % 100 == 0:
-            print(f"  {i}/{len(txids)} pulled")
+    with requests.Session() as session:
+        for i, tx in enumerate(txids):
+            val = get_tx_value(session, tx)
+            results.append({"txId": tx, "eth_value": val})
+            time.sleep(RATE_LIMIT_SLEEP)
+            if i % 100 == 0:
+                print(f"  {i}/{len(txids)} pulled")
 
     pd.DataFrame(results).to_csv(output_path, index=False)
     print(f"Saved {len(results)} rows to {output_path}")

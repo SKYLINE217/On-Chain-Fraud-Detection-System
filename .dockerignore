@@ -1,8 +1,11 @@
+# DO-03: Comprehensive .dockerignore to reduce image attack surface
 .git
 .env
+.env.example
 .pytest_cache
 __pycache__
 *.pyc
+*.pyo
 frontend/client/node_modules
 frontend/server/node_modules
 node_modules
@@ -10,3 +13,9 @@ md
 mocks
 docs
 data/raw
+tests/
+scripts/
+.github/
+notebooks/
+*.md
+!requirements.txt

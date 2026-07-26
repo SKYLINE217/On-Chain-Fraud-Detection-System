@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import winston from 'winston';
+import crypto from 'crypto';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -12,8 +13,12 @@ const logger = winston.createLogger({
 });
 
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-  logger.error(err.stack);
+  const correlationId = req.headers['x-correlation-id'] || crypto.randomUUID();
+  
+  logger.error(`[${correlationId}] ${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+  if (process.env.NODE_ENV !== 'production') {
+    logger.error(`[${correlationId}] ${err.stack}`);
+  }
 
   // Zod validation errors
   if (err.name === 'ZodError') {
@@ -26,7 +31,8 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   }
 
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message || 'Internal Server Error',
+    correlationId
   });
 };
 

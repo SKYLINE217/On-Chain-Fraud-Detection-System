@@ -6,10 +6,12 @@ See person_a_stages.md §3.3 for full reference.
 Compliance Disclaimer: This system is a research and portfolio
 demonstration only. Not a certified AML/CFT compliance tool.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
+from typing import Annotated
 from neo4j import AsyncDriver
 from redis.asyncio import Redis
 import json
+import hashlib
 
 from api.deps import get_neo4j_driver, get_redis
 from api.middleware.auth import verify_api_key
@@ -18,14 +20,19 @@ from api.models.responses import WalletResponse, SubgraphResponse, PathResponse
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 
+AddressParam = Annotated[
+    str,
+    Path(pattern=r'^[a-zA-Z0-9_\-]{1,100}$', description="Transaction address")
+]
+
 @router.get("/{address}", response_model=WalletResponse)
 async def get_wallet(
-    address: str,
+    address: AddressParam,
     driver: AsyncDriver = Depends(get_neo4j_driver),
     redis: Redis = Depends(get_redis),
 ):
     # 1. Cache check
-    cache_key = f"score:{address}"
+    cache_key = f"v2:score:{hashlib.sha256(address.encode()).hexdigest()[:16]}:{address}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
@@ -63,7 +70,7 @@ async def get_wallet(
 
 @router.get("/{address}/subgraph", response_model=SubgraphResponse)
 async def get_subgraph(
-    address: str,
+    address: AddressParam,
     hops: int = 2,
     driver: AsyncDriver = Depends(get_neo4j_driver),
 ):
@@ -73,7 +80,11 @@ async def get_subgraph(
         result = await session.run(
             """
             MATCH (start:Transaction {txId: $address})
-            CALL apoc.path.subgraphAll(start, {maxLevel: $max_level, limit: 200})
+            CALL apoc.path.subgraphAll(start, {
+                maxLevel: $max_level, 
+                limit: 200,
+                labelFilter: '+Transaction'
+            })
             YIELD nodes, relationships
             RETURN nodes, relationships
             """,
@@ -111,8 +122,8 @@ async def get_subgraph(
 
 @router.get("/path/find", response_model=PathResponse)
 async def get_path(
-    src: str,
-    dst: str,
+    src: AddressParam,
+    dst: AddressParam,
     max_hops: int = 10,
     driver: AsyncDriver = Depends(get_neo4j_driver),
 ):
@@ -123,7 +134,7 @@ async def get_path(
         result = await session.run(
             """
             MATCH (src:Transaction {txId: $src}), (dst:Transaction {txId: $dst})
-            MATCH path = shortestPath((src)-[:FLOWS_TO*..10]->(dst))
+            MATCH path = shortestPath((src)-[:FLOWS_TO*1..$safe_max]->(dst))
             RETURN [n IN nodes(path) | {
                 id: n.txId,
                 risk_score: n.risk_score,
@@ -132,7 +143,7 @@ async def get_path(
             }] AS path_nodes,
             length(path) AS hops
             """,
-            src=src, dst=dst
+            src=src, dst=dst, safe_max=safe_max
         )
         record = await result.single()
 

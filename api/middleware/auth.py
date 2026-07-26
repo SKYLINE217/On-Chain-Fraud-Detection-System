@@ -13,13 +13,18 @@ import os
 
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-VALID_API_KEY = os.environ.get("API_KEY", "dev_key_change_me")
+
+def get_api_key() -> str:
+    """Re-read from env on every call (allows runtime rotation via env update)."""
+    return os.environ.get("API_KEY", "dev_key_change_me")
 
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
-    if api_key is None or api_key != VALID_API_KEY:
+    valid = get_api_key()
+    if api_key is None or api_key != valid:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid or missing API key"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "APIKey"},
         )
     return api_key

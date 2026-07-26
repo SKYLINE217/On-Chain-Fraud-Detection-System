@@ -1,11 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet, useSubgraph } from '@/api/wallet';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ShieldAlert, ShieldCheck, HelpCircle, Loader2 } from 'lucide-react';
+import { Search, ShieldAlert, ShieldCheck, HelpCircle, Loader2, Network as NetworkIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SigmaContainer, useLoadGraph } from "@react-sigma/core";
+import "@react-sigma/core/lib/react-sigma.min.css";
+import Graph from "graphology";
+
+function SubgraphViz({ subgraph }: { subgraph: any }) {
+  const loadGraph = useLoadGraph();
+  useEffect(() => {
+    if (!subgraph) return;
+    const graph = new Graph();
+    subgraph.nodes.forEach((n: any) => graph.addNode(n.id, { 
+      label: n.id, size: 5 + n.risk_score * 15,
+      color: n.predicted_label === 'illicit' ? '#ef4444' : '#22c55e'
+    }));
+    subgraph.edges.forEach((e: any) => { 
+      if (graph.hasNode(e.src) && graph.hasNode(e.dst)) 
+        graph.addEdge(e.src, e.dst);
+    });
+    loadGraph(graph);
+  }, [subgraph, loadGraph]);
+  return null;
+}
 
 export default function WalletLookup() {
   const [searchInput, setSearchInput] = useState('');
@@ -108,7 +129,6 @@ export default function WalletLookup() {
             <CardHeader>
               <CardTitle>Local Transaction Subgraph (2-Hop)</CardTitle>
               <CardDescription>
-                Visualization requires Sigma.js implementation (WIP).
                 {subgraph && ` Found ${subgraph.node_count} connected entities.`}
               </CardDescription>
             </CardHeader>
@@ -119,10 +139,13 @@ export default function WalletLookup() {
                   Extracting graph topology...
                 </div>
               ) : subgraph ? (
-                <div className="text-center text-muted-foreground">
-                  <NetworkIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>Graph visualization placeholder.</p>
-                  <p className="text-xs mt-2 font-mono">Nodes: {subgraph.nodes.length} | Edges: {subgraph.edges.length}</p>
+                <div className="w-full h-full relative">
+                  <SigmaContainer style={{ height: "100%", width: "100%" }}>
+                    <SubgraphViz subgraph={subgraph} />
+                  </SigmaContainer>
+                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground bg-background/80 p-1 rounded font-mono">
+                    Nodes: {subgraph.nodes.length} | Edges: {subgraph.edges.length}
+                  </div>
                 </div>
               ) : (
                 <span className="text-muted-foreground text-sm">No subgraph loaded.</span>
@@ -134,4 +157,3 @@ export default function WalletLookup() {
     </div>
   );
 }
-import { Network as NetworkIcon } from 'lucide-react';

@@ -1,9 +1,21 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
 
-// Load .env (in development, it's at project root, but this BFF also needs it)
-// We rely on Docker Compose passing these env vars in production.
-dotenv.config({ path: '../../.env' }); 
+// BFF-04: Robust dotenv path resolution
+const envPaths = [
+  path.resolve(__dirname, '../../.env'),      // Docker build path
+  path.resolve(process.cwd(), '.env'),         // Local dev
+  path.resolve(process.cwd(), '../.env'),      // Alt local path
+];
+
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -28,3 +40,9 @@ if (!parsed.success) {
 }
 
 export const config = parsed.data;
+
+// AC-02: Enforce changing default admin password in production
+if (config.ADMIN_PASSWORD === 'admin' && config.NODE_ENV === 'production') {
+  console.error('❌ FATAL: Default admin password must be changed in production!');
+  process.exit(1);
+}

@@ -18,10 +18,11 @@ import logging
 import os
 import time
 
+import asyncio
 import torch
 import torch.nn.functional as F
-from neo4j import GraphDatabase
-from redis import Redis
+from neo4j import AsyncGraphDatabase
+from redis.asyncio import Redis
 from dotenv import load_dotenv
 
 from src.features.build_pyg import load_pyg_data
@@ -69,10 +70,10 @@ def load_model_from_config(checkpoint_path: str, config_path: str) -> tuple[torc
     return model, config
 
 
-def write_scores_to_neo4j(driver, records: list[dict]):
+async def write_scores_to_neo4j(driver, records: list[dict]):
     """Batch UNWIND MATCH + SET for scored node properties."""
-    with driver.session() as session:
-        session.run(
+    async with driver.session() as session:
+        await session.run(
             """
             UNWIND $records AS row
             MATCH (t:Transaction {txId: row.txId})
@@ -85,7 +86,7 @@ def write_scores_to_neo4j(driver, records: list[dict]):
         )
 
 
-def run_batch_scoring(flush_redis: bool = True):
+async def run_batch_scoring(flush_redis: bool = True):
     start = time.time()
     logger.info("Loading model + config...")
     model, config = load_model_from_config(MODEL_CHECKPOINT, MODEL_CONFIG)
@@ -126,27 +127,29 @@ def run_batch_scoring(flush_redis: bool = True):
     ]
 
     logger.info("Writing scores to Neo4j...")
-    driver = GraphDatabase.driver(
+    
+    neo4j_password = os.environ.get("NEO4J_PASSWORD")
+    if not neo4j_password:
+        raise ValueError("NEO4J_PASSWORD environment variable must be set (ML-04).")
+
+    driver = AsyncGraphDatabase.driver(
         os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
-        auth=(
-            os.environ.get("NEO4J_USER", "neo4j"),
-            os.environ.get("NEO4J_PASSWORD", "changeme_in_prod"),
-        )
+        auth=(os.environ.get("NEO4J_USER", "neo4j"), neo4j_password)
     )
     try:
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
-            write_scores_to_neo4j(driver, batch)
+            await write_scores_to_neo4j(driver, batch)
             if i % 10000 == 0:
                 logger.info(f"  written: {i}/{len(records)}")
     finally:
-        driver.close()
+        await driver.close()
 
     if flush_redis:
         logger.info("Flushing Redis cache...")
         redis = Redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"))
-        redis.flushdb()
-        redis.close()
+        await redis.flushdb()
+        await redis.close()
         logger.info("Redis flushed.")
 
     elapsed = time.time() - start
@@ -157,4 +160,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--flush-redis", action="store_true", default=True)
     args = parser.parse_args()
-    run_batch_scoring(flush_redis=args.flush_redis)
+    asyncio.run(run_batch_scoring(flush_redis=args.flush_redis))

@@ -4,19 +4,28 @@
 # Compliance Disclaimer: This system is a research and portfolio
 # demonstration only. Not a certified AML/CFT compliance tool.
 
+# DO-06: Pin base image to specific version for reproducible builds
 FROM python:3.11-slim
 
 # Run as non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Install deps as root, then drop privileges
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=appuser:appgroup . .
+# DO-04: Only copy necessary source files (tests/scripts excluded via .dockerignore)
+COPY --chown=appuser:appgroup api/ ./api/
+COPY --chown=appuser:appgroup src/ ./src/
+COPY --chown=appuser:appgroup checkpoints/ ./checkpoints/
+
 USER appuser
 
 # No shell in production image
 EXPOSE 8000
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+# DO-08: Enable access logging for audit trail, set log level, add worker count and request limits
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--access-log", "--log-level", "warning", "--limit-max-requests", "10000"]

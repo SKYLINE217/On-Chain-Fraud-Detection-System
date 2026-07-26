@@ -6,7 +6,8 @@ See person_a_stages.md §5.2 for full reference.
 Compliance Disclaimer: This system is a research and portfolio
 demonstration only. Not a certified AML/CFT compliance tool.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
+from typing import Annotated
 from api.deps import get_neo4j_driver
 from api.middleware.auth import verify_api_key
 
@@ -38,12 +39,12 @@ async def list_clusters(
             """,
             min_size=min_size, min_risk=min_risk, limit=limit
         )
-        return [r.data() for r in result]
+        return [r.data() async for r in result]
 
 
 @router.get("/{cluster_id}")
 async def get_cluster(
-    cluster_id: int,
+    cluster_id: Annotated[int, Path(ge=0, le=2_147_483_647)],
     driver=Depends(get_neo4j_driver),
 ):
     """Return top 20 highest-risk wallets in a community."""
@@ -58,7 +59,7 @@ async def get_cluster(
             """,
             cid=cluster_id
         )
-        wallets = [r.data() for r in result]
+        wallets = [r.data() async for r in result]
 
     # Summary stats
     async with driver.session() as session:

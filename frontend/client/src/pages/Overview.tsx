@@ -2,8 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, ShieldAlert, Users, Zap, Search, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 
 export default function Overview() {
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiClient.get('/health/detailed').then(r => r.data),
+    refetchInterval: 30000,
+  });
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
@@ -20,7 +27,7 @@ export default function Overview() {
             <Activity className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Online</div>
+            <div className="text-2xl font-bold">{health ? (health.status === 'healthy' ? 'Online' : 'Degraded') : 'Loading...'}</div>
             <p className="text-xs text-muted-foreground mt-1">
               GNN Inference Server active
             </p>
@@ -33,7 +40,9 @@ export default function Overview() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">203,769</div>
+            <div className="text-2xl font-bold">
+              {health?.node_count ? health.node_count.toLocaleString() : 'Loading...'}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Addresses in Neo4j
             </p>
