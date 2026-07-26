@@ -1,0 +1,25 @@
+# frontend/Dockerfile.bff
+# Node.js BFF — serves React bundle + proxies API requests to FastAPI
+# See person_a_stages.md §5.4 and security.md §13 for full reference.
+#
+# Compliance Disclaimer: This system is a research and portfolio
+# demonstration only. Not a certified AML/CFT compliance tool.
+
+FROM node:20-alpine
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+WORKDIR /app
+
+# Install server deps
+COPY server/package*.json ./server/
+RUN cd server && npm ci --only=production
+
+# Copy server source
+COPY --chown=appuser:appgroup server/ ./server/
+
+# Copy pre-built React bundle (built in CI or separately)
+COPY --chown=appuser:appgroup client/dist/ ./client/dist/
+
+USER appuser
+EXPOSE 3000
+CMD ["node", "server/src/index.js"]
