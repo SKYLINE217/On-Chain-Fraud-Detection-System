@@ -14,10 +14,16 @@ import joblib
 try:
     from api.deps import get_neo4j_driver
     from api.middleware.auth import verify_api_key
+    from api.models.responses import ExplainResponse
 except ImportError:
     # Mocks for unit testing if Person A/C haven't built these yet
     async def get_neo4j_driver(): yield None
     async def verify_api_key(): pass
+    
+    from pydantic import BaseModel
+    class ExplainResponse(BaseModel):
+        pass
+
 
 from src.explain.gnn_explainer import build_gnn_explainer, explain_node
 from src.explain.shap_explainer import build_kernel_explainer, compute_shap_for_node
@@ -67,7 +73,7 @@ def _lazy_load():
             _shap_tree_explainer = None
 
 
-@router.post("/{address}")
+@router.post("/{address}", response_model=ExplainResponse)
 async def explain_address(address: str, driver: AsyncDriver = Depends(get_neo4j_driver)):
     """
     On-demand GNNExplainer + SHAP for a single address.
