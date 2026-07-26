@@ -136,6 +136,7 @@ def load_pyg_data(
         x=x,
         edge_index=edge_index,
         y=y,
+        time_step=torch.tensor(time_steps, dtype=torch.long),
         train_mask=train_mask,
         val_mask=val_mask,
         test_mask=test_mask,

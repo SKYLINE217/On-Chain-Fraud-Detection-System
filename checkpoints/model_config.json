@@ -1,0 +1,9 @@
+{
+  "model_type": "graphsage",
+  "in_channels": 174,
+  "hidden_channels": 128,
+  "out_channels": 2,
+  "num_layers": 3,
+  "aggr": "mean",
+  "trained_on": "mocks/person_a/mock_features_combined.parquet"
+}

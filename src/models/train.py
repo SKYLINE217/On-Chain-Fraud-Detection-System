@@ -31,6 +31,7 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     average_precision_score,
     roc_auc_score,
+    precision_recall_curve,
 )
 import logging
 from typing import Optional
@@ -268,5 +269,25 @@ def train(
             "test_precision": test_metrics["precision"],
             "test_recall": test_metrics["recall"],
         })
+        
+        # Log PR curve data to W&B
+        model.eval()
+        with torch.no_grad():
+            out = model(data.x.to(device), data.edge_index.to(device))
+            logits_masked = out[data.test_mask].cpu()
+            y_masked = data.y[data.test_mask].cpu()
+            probs = F.softmax(logits_masked, dim=1).numpy()
+            y_true = y_masked.numpy()
+            
+            precision_vals, recall_vals, _ = precision_recall_curve(
+                (y_true == 1).astype(int), probs[:, 1]
+            )
+            wandb.log({
+                "pr_curve": wandb.plot.line(
+                    wandb.Table(data=list(zip(recall_vals.tolist(), precision_vals.tolist())),
+                                columns=["recall", "precision"]),
+                    x="recall", y="precision", title="Precision-Recall Curve"
+                )
+            })
 
     return test_metrics
