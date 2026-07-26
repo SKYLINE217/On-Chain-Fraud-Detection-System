@@ -37,6 +37,7 @@ checkpoints/
 logs/
 .env
 mocks/
+md/
 
 # System
 .DS_Store

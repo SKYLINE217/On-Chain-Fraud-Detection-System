@@ -12,6 +12,9 @@ from api.routers.explain import router
 app = FastAPI()
 app.include_router(router, prefix="/explain")
 
+from api.middleware.auth import verify_api_key
+app.dependency_overrides[verify_api_key] = lambda: "mock_api_key"
+
 client = TestClient(app)
 
 def test_explain_endpoint():
