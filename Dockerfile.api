@@ -1,0 +1,22 @@
+# Dockerfile.api — FastAPI ML inference server
+# See security.md §13 for Docker security hardening reference.
+#
+# Compliance Disclaimer: This system is a research and portfolio
+# demonstration only. Not a certified AML/CFT compliance tool.
+
+FROM python:3.11-slim
+
+# Run as non-root user
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+WORKDIR /app
+
+# Install deps as root, then drop privileges
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY --chown=appuser:appgroup . .
+USER appuser
+
+# No shell in production image
+EXPOSE 8000
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
