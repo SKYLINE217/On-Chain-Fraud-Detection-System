@@ -1,140 +1,149 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, ShieldAlert, Users, Zap, Search, Network } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { MetricCard } from '@/components/shared/MetricCard';
+import { TopologyGrid } from '@/components/layout/TopologyGrid';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useEffect, useState } from 'react';
 
-export default function Overview() {
-  const { data: health } = useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiClient.get('/health/detailed').then(r => r.data),
-    refetchInterval: 30000,
-  });
+// Mock data for histogram
+const histogramData = Array.from({ length: 20 }, (_, i) => {
+  const bin = (i * 0.05).toFixed(2);
+  const center = parseFloat(bin) + 0.025;
+  // create a bi-modal distribution
+  let count = Math.floor(Math.random() * 1000) + 100;
+  if (center < 0.2) count += 15000;
+  if (center > 0.8) count += 2000;
+  return {
+    bin,
+    center,
+    count,
+  };
+});
+
+function RiskHistogram() {
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">System Overview</h1>
-        <p className="text-muted-foreground mt-2">
-          Real-time insights from the Graph Neural Network fraud detection system.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Activity className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{health ? (health.status === 'healthy' ? 'Online' : 'Degraded') : 'Loading...'}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              GNN Inference Server active
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nodes Indexed</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {health?.node_count ? health.node_count.toLocaleString() : 'Loading...'}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Addresses in Neo4j
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Flagged Illicit</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">4,545</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              2.2% of total nodes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Inference Time</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">42ms</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Sub-graph extraction + GNN
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="col-span-1 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Link to="/wallet" className="block">
-              <Button className="w-full justify-start" variant="outline">
-                <Search className="mr-2 h-4 w-4" />
-                Investigate Wallet Address
-              </Button>
-            </Link>
-            <Link to="/clusters" className="block">
-              <Button className="w-full justify-start" variant="outline">
-                <Network className="mr-2 h-4 w-4" />
-                Explore High-Risk Clusters
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-        
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Model Performance (Validation)</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>F1 Score (Illicit)</span>
-                    <span className="font-mono">0.82</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: '82%' }} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Precision</span>
-                    <span className="font-mono">0.91</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: '91%' }} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Recall</span>
-                    <span className="font-mono">0.74</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: '74%' }} />
-                  </div>
-                </div>
-             </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="h-[260px] w-full mt-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={histogramData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <XAxis 
+            dataKey="bin" 
+            ticks={['0.00', '0.50', '1.00']} 
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }} 
+            axisLine={false} 
+            tickLine={false} 
+          />
+          <YAxis 
+            tickFormatter={(val) => val.toLocaleString()} 
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip 
+            cursor={{ fill: 'var(--color-bg-elevated)' }}
+            contentStyle={{ backgroundColor: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
+            labelStyle={{ color: 'var(--color-text-secondary)' }}
+            itemStyle={{ color: 'var(--color-text-primary)' }}
+          />
+          <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+            {histogramData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.center < 0.5 ? 'var(--color-risk-low)' : entry.center < 0.8 ? 'var(--color-risk-medium)' : 'var(--color-risk-high)'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
+export default function Overview() {
+  const [highRiskWidth, setHighRiskWidth] = useState(0);
+  const [medRiskWidth, setMedRiskWidth] = useState(0);
+  const [lowRiskWidth, setLowRiskWidth] = useState(0);
+
+  useEffect(() => {
+    // Animate widths
+    setTimeout(() => {
+      setHighRiskWidth(1.4);
+      setMedRiskWidth(4.0);
+      setLowRiskWidth(94.6);
+    }, 100);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-8 pb-12 animate-in fade-in duration-slow">
+      {/* Hero Section */}
+      <div className="relative pt-8 pb-12 -mx-4 md:-mx-12 px-4 md:px-12 overflow-hidden">
+        <TopologyGrid />
+        
+        <div className="relative z-10 space-y-2 mb-8">
+          <h1 className="text-h1 font-bold">System Overview</h1>
+          <p className="text-secondary text-body max-w-2xl">
+            Real-time insights from the GraphSAGE fraud detection system. Inspecting transaction typologies across the Ethereum network.
+          </p>
+        </div>
+
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="backdrop-blur-md bg-surface/80 rounded-md">
+            <MetricCard label="Total Wallets" value="203,769" />
+          </div>
+          <div className="backdrop-blur-md bg-surface/80 rounded-md">
+            <MetricCard label="High Risk (>80%)" value="2,847" status="danger" />
+          </div>
+          <div className="backdrop-blur-md bg-surface/80 rounded-md">
+            <MetricCard label="Last Scored" value="2 hours ago" subtext="2026-07-27 10:30 UTC" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Risk Distribution - 60% */}
+        <div className="lg:col-span-7 bg-surface border border-border p-6 rounded-md shadow-card">
+          <h2 className="text-h2 font-semibold">Risk Distribution</h2>
+          <RiskHistogram />
+        </div>
+
+        {/* Model Performance - 40% */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <MetricCard label="PR-AUC" value="0.892" />
+            <MetricCard label="F1 Score" value="0.781" />
+            <MetricCard label="Precision" value="0.914" />
+            <MetricCard label="Recall" value="0.682" />
+          </div>
+          <div className="text-caption text-secondary mt-2 px-1">
+            Model: GraphSAGE · Test steps 40–49
+          </div>
+        </div>
+      </div>
+
+      {/* Risk Tier Breakdown */}
+      <div className="bg-surface border border-border p-6 rounded-md shadow-card">
+        <h2 className="text-h2 font-semibold mb-6">Risk Tier Breakdown</h2>
+        <div className="flex flex-col gap-6 font-mono text-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-32 text-secondary">High (&gt;0.8)</div>
+            <div className="w-32 text-right">2,847 wallets</div>
+            <div className="flex-1 h-3 bg-sunken rounded-full overflow-hidden">
+              <div className="h-full bg-danger transition-all duration-slow" style={{ width: `${highRiskWidth}%` }} />
+            </div>
+            <div className="w-16 text-right">1.4%</div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-32 text-secondary">Med (0.5–0.8)</div>
+            <div className="w-32 text-right">8,234 wallets</div>
+            <div className="flex-1 h-3 bg-sunken rounded-full overflow-hidden">
+              <div className="h-full bg-warning transition-all duration-slow" style={{ width: `${medRiskWidth}%` }} />
+            </div>
+            <div className="w-16 text-right">4.0%</div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-32 text-secondary">Low (&lt;0.5)</div>
+            <div className="w-32 text-right">192,688 wallets</div>
+            <div className="flex-1 h-3 bg-sunken rounded-full overflow-hidden">
+              <div className="h-full bg-success transition-all duration-slow" style={{ width: `${lowRiskWidth}%` }} />
+            </div>
+            <div className="w-16 text-right">94.6%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

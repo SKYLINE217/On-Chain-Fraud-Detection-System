@@ -56,7 +56,7 @@ def verify_parquet(parquet_path: str) -> bool:
         AssertionError: If any contract check fails.
     """
     if not os.path.exists(parquet_path):
-        print(f"❌ File not found: {parquet_path}")
+        print(f"[FAIL] File not found: {parquet_path}")
         return False
 
     print(f"Validating: {parquet_path}")
@@ -67,30 +67,30 @@ def verify_parquet(parquet_path: str) -> bool:
     # (txId + timeStep + class + f1..f166 + 8 engineered = 3 + 166 + 8 = 177).
     # The column list is authoritative.
     assert df.shape == (203769, 177), \
-        f"❌ Shape mismatch: {df.shape}  expected (203769, 177)"
-    print(f"  ✅ Shape: {df.shape}")
+        f"[FAIL] Shape mismatch: {df.shape}  expected (203769, 177)"
+    print(f"  [PASS] Shape: {df.shape}")
 
     # 2. Column existence
     missing = [col for col in REQUIRED_COLS if col not in df.columns]
-    assert len(missing) == 0, f"❌ Missing columns: {missing}"
-    print(f"  ✅ All {len(REQUIRED_COLS)} required columns present")
+    assert len(missing) == 0, f"[FAIL] Missing columns: {missing}"
+    print(f"  [PASS] All {len(REQUIRED_COLS)} required columns present")
 
     # 3. Zero NaNs in feature columns
     nan_count = df[FEATURE_COLS].isna().sum().sum()
-    assert nan_count == 0, f"❌ NaN count in features: {nan_count}  (expected 0)"
-    print(f"  ✅ Zero NaNs in feature columns")
+    assert nan_count == 0, f"[FAIL] NaN count in features: {nan_count}  (expected 0)"
+    print(f"  [PASS] Zero NaNs in feature columns")
 
     # 4. Class values
     actual_classes = set(df["class"].unique())
     assert actual_classes.issubset(VALID_CLASSES), \
-        f"❌ Unexpected class values: {actual_classes - VALID_CLASSES}"
-    print(f"  ✅ Class values: {actual_classes}")
+        f"[FAIL] Unexpected class values: {actual_classes - VALID_CLASSES}"
+    print(f"  [PASS] Class values: {actual_classes}")
 
     # 5. Temporal range
     ts_min, ts_max = df["timeStep"].min(), df["timeStep"].max()
     assert ts_min == 1 and ts_max == 49, \
-        f"❌ timeStep range: {ts_min}-{ts_max}  expected 1-49"
-    print(f"  ✅ timeStep range: {ts_min}-{ts_max}")
+        f"[FAIL] timeStep range: {ts_min}-{ts_max}  expected 1-49"
+    print(f"  [PASS] timeStep range: {ts_min}-{ts_max}")
 
     # 6. Class distribution summary
     class_dist = df["class"].value_counts().to_dict()
@@ -114,7 +114,7 @@ def verify_parquet(parquet_path: str) -> bool:
         train_illicit = (train["class"] == "1").sum()
         print(f"    Train illicit:  {train_illicit:,} ({train_illicit/len(train)*100:.1f}%)")
 
-    print(f"\n✅ Parquet validated successfully: {parquet_path}")
+    print(f"\n[PASS] Parquet validated successfully: {parquet_path}")
     return True
 
 

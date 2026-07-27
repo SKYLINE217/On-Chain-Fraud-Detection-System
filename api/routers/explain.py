@@ -114,10 +114,13 @@ async def explain_address(address: AddressParam, driver: AsyncDriver = Depends(g
     x_node = _data.x[node_idx].numpy().reshape(1, -1)
     
     if _shap_tree_explainer is not None:
+        # XGBoost baseline is trained on 173 features (excluding communityId)
+        # _data.x has 174 features (including communityId)
+        x_node_xgb = x_node[:, :-1]
         shap_features = compute_shap_for_node(
             _shap_tree_explainer,
-            x_node,
-            feature_names=FEATURE_COLS,
+            x_node_xgb,
+            feature_names=FEATURE_COLS[:-1],
             top_k=10,
         )
     else:

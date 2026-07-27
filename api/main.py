@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 import logging
 
-from api.routers import wallet, health, cluster
+from api.routers import wallet, health, cluster, score, explain
 from api.middleware.auth import verify_api_key
 
 logger = logging.getLogger(__name__)
@@ -91,4 +91,16 @@ app.include_router(
     cluster.router,
     prefix="/cluster",
     tags=["cluster"],
+)
+
+app.include_router(
+    explain.router,
+    prefix="/explain",
+    tags=["explain"],
+)
+
+app.include_router(
+    score.router,
+    prefix="/score",
+    tags=["score"],
 )
