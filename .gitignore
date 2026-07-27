@@ -38,7 +38,6 @@ logs/
 .env
 mocks/
 md/
-
 # System
 .DS_Store
 Thumbs.db
