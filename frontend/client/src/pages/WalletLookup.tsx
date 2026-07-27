@@ -162,7 +162,7 @@ export default function WalletLookup() {
                     </div>
                     <div>
                       <div className="text-xs text-secondary">Community</div>
-                      <div className="font-mono mt-1 text-accent cursor-pointer hover:underline">#{walletData.communityId}</div>
+                      <div className="font-mono mt-1 text-accent cursor-pointer hover:underline" onClick={() => navigate('/clusters')}>#{walletData.communityId}</div>
                     </div>
                   </div>
                 </div>

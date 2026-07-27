@@ -14,6 +14,7 @@ const ALL_CLUSTERS = [
 export default function ClusterExplorer() {
   const [minRiskInput, setMinRiskInput] = useState(0.5);
   const [minSizeInput, setMinSizeInput] = useState(10);
+  const [sortKey, setSortKey] = useState('avg_desc');
   
   const [filters, setFilters] = useState({ minRisk: 0.5, minSize: 10 });
 
@@ -22,10 +23,20 @@ export default function ClusterExplorer() {
   };
 
   const filteredClusters = useMemo(() => {
-    return ALL_CLUSTERS.filter(
+    const filtered = ALL_CLUSTERS.filter(
       c => c.avg >= filters.minRisk && c.size >= filters.minSize
-    ).sort((a, b) => b.avg - a.avg);
-  }, [filters]);
+    );
+    return filtered.sort((a, b) => {
+      if (sortKey === 'avg_desc') return b.avg - a.avg;
+      if (sortKey === 'size_desc') return b.size - a.size;
+      if (sortKey === 'id_asc') {
+        const idA = parseInt(a.id.replace('#', ''), 10);
+        const idB = parseInt(b.id.replace('#', ''), 10);
+        return idA - idB;
+      }
+      return 0;
+    });
+  }, [filters, sortKey]);
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-slow">
@@ -39,10 +50,10 @@ export default function ClusterExplorer() {
       <div className="bg-surface border border-border p-4 rounded-md shadow-card flex flex-wrap items-center gap-6">
         <div className="flex items-center gap-2">
           <label className="text-sm text-secondary">Sort by:</label>
-          <select className="bg-sunken border border-border rounded px-2 py-1 text-sm outline-none">
-            <option>Avg Risk ▼</option>
-            <option>Size</option>
-            <option>Community ID</option>
+          <select value={sortKey} onChange={e => setSortKey(e.target.value)} className="bg-sunken border border-border rounded px-2 py-1 text-sm outline-none">
+            <option value="avg_desc">Avg Risk ▼</option>
+            <option value="size_desc">Size ▼</option>
+            <option value="id_asc">Community ID</option>
           </select>
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +116,7 @@ export default function ClusterExplorer() {
         </table>
         <div className="p-4 text-center text-sm text-secondary border-t border-border flex justify-between items-center">
           <span>Showing {filteredClusters.length} communities.</span>
-          <button className="text-accent hover:underline ml-1">Load more</button>
+          <button onClick={() => alert('All available clusters are currently loaded.')} className="text-accent hover:underline ml-1">Load more</button>
         </div>
       </div>
     </div>
