@@ -75,36 +75,12 @@ services:
       start_period: 60s  # Allow time for model loading
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000
 
-  bff:
+  dashboard:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.bff
+      context: ./frontend/client
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    depends_on:
-      fastapi:
-        # DO-05: Wait for FastAPI to be healthy before proxying
-        condition: service_healthy
-    environment:
-      FASTAPI_URL: http://fastapi:8000
-      FASTAPI_API_KEY: ${API_KEY:-dev_key_change_me}
-      JWT_SECRET: ${JWT_SECRET:-changeme_in_prod_use_256bit}
-      JWT_EXPIRES_IN: 8h
-      NODE_ENV: production
-      PORT: 3000
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
-      RATE_LIMIT_WINDOW_MS: 60000
-      RATE_LIMIT_MAX: 100
-      ADMIN_RATE_LIMIT_MAX: 20
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
-      REDIS_URL: redis://redis:6379
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    command: node server/dist/index.js
+      - "3000:80"
 
   batch-job:
     build:
