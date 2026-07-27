@@ -35,7 +35,7 @@ export default function DisclaimerBanner() {
   return (
     <div className="fixed bottom-0 left-0 w-full z-50 bg-[#1C2336] border-t-2 border-[var(--color-risk-medium)] shadow-[0_-4px_16px_rgba(0,0,0,0.5)]">
       <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-3">
-        {/* Desktop View */}
+        {}
         <div className="hidden md:flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-warning">
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
@@ -57,7 +57,7 @@ export default function DisclaimerBanner() {
           </button>
         </div>
 
-        {/* Mobile View */}
+        {}
         <div className="md:hidden flex flex-col gap-2">
           <div 
             className="flex items-center justify-between text-warning cursor-pointer"

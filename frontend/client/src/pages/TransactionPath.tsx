@@ -21,7 +21,6 @@ export default function TransactionPath() {
     setError(null);
     setIsLoading(true);
 
-    // Mock API call
     setTimeout(() => {
       const found = Math.random() > 0.2; // 80% chance to find a path
       if (found) {
@@ -40,7 +39,6 @@ export default function TransactionPath() {
               { id: '0xDEF', risk_score: 0.71, predicted_label: 'unknown', size: 9, borderColor: '#4D6AF5', borderSize: 2 },
               { id: '0xGHI', risk_score: 0.12, predicted_label: 'licit', size: 9, borderColor: '#4D6AF5', borderSize: 2 },
               { id: dst, risk_score: 0.08, predicted_label: 'licit', size: 9, borderColor: '#4D6AF5', borderSize: 2 },
-              // Context nodes
               { id: '0xctx1', risk_score: 0.5, predicted_label: 'unknown', size: 3, color: '#64748B' },
               { id: '0xctx2', risk_score: 0.1, predicted_label: 'licit', size: 3, color: '#64748B' },
             ],

@@ -11,13 +11,12 @@ FEATURE_READABLE_NAMES = {
     "burst_score": "temporal burst score",
     "pageRank": "network centrality (PageRank)",
     "communityId": "community membership",
-    # f1..f166: anonymized — do not assert semantic meaning
-}
 
+}
 
 def generate_rationale(
     shap_top_features: list[dict],
-    edge_mask_top: list[tuple],   # [(neighbor_txId, edge_importance, neighbor_label), ...]
+    edge_mask_top: list[tuple],   
     predicted_label: str,
 ) -> str:
     """
@@ -41,7 +40,7 @@ def generate_rationale(
         val = feat["feature_value"]
 
         if feat["feature_name"].startswith("f") and feat["feature_name"][1:].isdigit():
-            # Raw Elliptic feature — do not assert semantic meaning
+
             reasons.append(
                 f"Anonymized feature {feat['feature_name']} "
                 f"(value: {val:.2f}, SHAP impact: {impact:+.3f})"

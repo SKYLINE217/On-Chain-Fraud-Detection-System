@@ -3,11 +3,9 @@ import { TopologyGrid } from '@/components/layout/TopologyGrid';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useEffect, useState } from 'react';
 
-// Mock data for histogram
 const histogramData = Array.from({ length: 20 }, (_, i) => {
   const bin = (i * 0.05).toFixed(2);
   const center = parseFloat(bin) + 0.025;
-  // create a bi-modal distribution
   let count = Math.floor(Math.random() * 1000) + 100;
   if (center < 0.2) count += 15000;
   if (center > 0.8) count += 2000;
@@ -59,7 +57,6 @@ export default function Overview() {
   const [lowRiskWidth, setLowRiskWidth] = useState(0);
 
   useEffect(() => {
-    // Animate widths
     setTimeout(() => {
       setHighRiskWidth(1.4);
       setMedRiskWidth(4.0);
@@ -69,7 +66,7 @@ export default function Overview() {
 
   return (
     <div className="flex flex-col gap-8 pb-12 animate-in fade-in duration-slow">
-      {/* Hero Section */}
+      {}
       <div className="relative pt-8 pb-12 -mx-4 md:-mx-12 px-4 md:px-12 overflow-hidden">
         <TopologyGrid />
         
@@ -94,13 +91,13 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Risk Distribution - 60% */}
+        {}
         <div className="lg:col-span-7 bg-surface border border-border p-6 rounded-md shadow-card">
           <h2 className="text-h2 font-semibold">Risk Distribution</h2>
           <RiskHistogram />
         </div>
 
-        {/* Model Performance - 40% */}
+        {}
         <div className="lg:col-span-5 flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <MetricCard label="PR-AUC" value="0.892" />
@@ -114,7 +111,7 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Risk Tier Breakdown */}
+      {}
       <div className="bg-surface border border-border p-6 rounded-md shadow-card">
         <h2 className="text-h2 font-semibold mb-6">Risk Tier Breakdown</h2>
         <div className="flex flex-col gap-6 font-mono text-sm">

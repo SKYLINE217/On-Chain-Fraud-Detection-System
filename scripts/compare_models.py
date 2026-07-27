@@ -11,7 +11,7 @@ def compare_models(entity_project: str):
     except ImportError:
         print("wandb not installed. Run `pip install wandb`.")
         sys.exit(1)
-        
+
     api = wandb.Api()
     try:
         runs = api.runs(entity_project)
@@ -40,8 +40,7 @@ def compare_models(entity_project: str):
 
     df = pd.DataFrame(rows).sort_values("PR-AUC", ascending=False)
     print(df.to_string(index=False))
-    
-    # Save to docs/model_comparison.csv
+
     import os
     os.makedirs("docs", exist_ok=True)
     df.to_csv("docs/model_comparison.csv", index=False)
@@ -52,5 +51,5 @@ if __name__ == "__main__":
     parser.add_argument("--project", type=str, default="your-username/onchain-fraud-gnn",
                         help="W&B project path (entity/project)")
     args = parser.parse_args()
-    
+
     compare_models(args.project)

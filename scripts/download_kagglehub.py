@@ -11,8 +11,6 @@ os.makedirs(target_dir, exist_ok=True)
 
 print(f"Copying files to {target_dir}...")
 
-# The kaggle dataset contains a folder named 'elliptic_bitcoin_dataset' sometimes, or it just has the files.
-# We will search for the .csv files recursively in the path.
 csv_files = ["elliptic_txs_features.csv", "elliptic_txs_classes.csv", "elliptic_txs_edgelist.csv"]
 
 found_files = 0

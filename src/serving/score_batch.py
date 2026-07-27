@@ -1,4 +1,4 @@
-# src/serving/score_batch.py
+
 """
 Nightly batch job: loads GNN checkpoint, runs inference on all 203,769 nodes,
 writes risk_score / predicted_label / confidence / embedding back to Neo4j.
@@ -36,8 +36,7 @@ logging.basicConfig(level=logging.INFO)
 
 MODEL_CHECKPOINT = os.environ.get("MODEL_CHECKPOINT", "checkpoints/best_model.pt")
 MODEL_CONFIG     = os.environ.get("MODEL_CONFIG", "checkpoints/model_config.json")
-BATCH_SIZE = 1000  # Neo4j write batch size
-
+BATCH_SIZE = 1000  
 
 def load_model_from_config(checkpoint_path: str, config_path: str) -> tuple[torch.nn.Module, dict]:
     """Load model using model_config.json schema (see ml_models.md §9.3)."""
@@ -69,7 +68,6 @@ def load_model_from_config(checkpoint_path: str, config_path: str) -> tuple[torc
     model.eval()
     return model, config
 
-
 async def write_scores_to_neo4j(driver, records: list[dict]):
     """Batch UNWIND MATCH + SET for scored node properties."""
     async with driver.session() as session:
@@ -84,7 +82,6 @@ async def write_scores_to_neo4j(driver, records: list[dict]):
             """,
             records=records
         )
-
 
 async def run_batch_scoring(flush_redis: bool = True):
     start = time.time()
@@ -110,7 +107,6 @@ async def run_batch_scoring(flush_redis: bool = True):
     predicted_class = probs.argmax(dim=1).numpy()
     label_map_inv   = {1: "illicit", 0: "licit"}
 
-    # Build records — Read txIds from parquet (preserved ordering)
     import pandas as pd
     df = pd.read_parquet("data/processed/features_combined.parquet", columns=["txId"])
     txids = df["txId"].tolist()
@@ -127,7 +123,7 @@ async def run_batch_scoring(flush_redis: bool = True):
     ]
 
     logger.info("Writing scores to Neo4j...")
-    
+
     neo4j_password = os.environ.get("NEO4J_PASSWORD")
     if not neo4j_password:
         raise ValueError("NEO4J_PASSWORD environment variable must be set (ML-04).")
@@ -154,7 +150,6 @@ async def run_batch_scoring(flush_redis: bool = True):
 
     elapsed = time.time() - start
     logger.info(f"Batch scoring complete. Elapsed: {elapsed:.1f}s")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -18,7 +18,6 @@ import logging
 import shutil
 import time
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
@@ -37,10 +36,6 @@ CHECKPOINT_DIR = "checkpoints"
 FEATURE_COLS_BASE = [f"f{i}" for i in range(1, 167)]
 OUTPUT_PARQUET = os.path.join(PROCESSED_DIR, "features_combined.parquet")
 
-
-# =========================================================================
-# STEP 1: Download dataset
-# =========================================================================
 def download_dataset():
     """Download Elliptic dataset using kagglehub."""
     logger.info("=" * 60)
@@ -51,10 +46,8 @@ def download_dataset():
     path = kagglehub.dataset_download("ellipticco/elliptic-data-set")
     logger.info(f"Dataset downloaded to: {path}")
 
-    # Copy files to data/raw/
     os.makedirs(RAW_DIR, exist_ok=True)
 
-    # Find the CSV files (may be in subdirectories)
     csv_files = {
         "elliptic_txs_features.csv": None,
         "elliptic_txs_classes.csv": None,
@@ -78,10 +71,6 @@ def download_dataset():
 
     return path
 
-
-# =========================================================================
-# STEP 2: Engineer features (locally, no Neo4j)
-# =========================================================================
 def engineer_features():
     """Build features_combined.parquet without Neo4j GDS."""
     logger.info("")
@@ -91,7 +80,6 @@ def engineer_features():
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-    # Load base data
     logger.info("Loading CSVs...")
     features = pd.read_csv(
         os.path.join(RAW_DIR, "elliptic_txs_features.csv"),
@@ -111,7 +99,6 @@ def engineer_features():
 
     logger.info(f"Nodes: {len(df)}, Edges: {len(edges)}")
 
-    # --- Engineered features ---
     logger.info("Computing tx_freq...")
     out_deg = edges.groupby("src").size().rename("out_deg")
     in_deg = edges.groupby("dst").size().rename("in_deg")
@@ -136,7 +123,6 @@ def engineer_features():
     step_std = df_with_deg.groupby("timeStep")["out_deg"].transform("std").replace(0, 1)
     df["burst_score"] = ((df_with_deg["out_deg"] - step_mean) / step_std).values
 
-    # --- Graph features via networkx ---
     logger.info("Computing graph features (PageRank, Louvain, clustering)...")
     import networkx as nx
 
@@ -145,12 +131,10 @@ def engineer_features():
     G.add_edges_from(zip(edges["src"].values, edges["dst"].values))
     logger.info(f"NetworkX graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
-    # PageRank
     logger.info("  Computing PageRank...")
     pr = nx.pagerank(G, alpha=0.85, max_iter=20, tol=1e-4)
     df["pageRank"] = df["txId"].map(pr).fillna(0).values
 
-    # Louvain community detection (requires undirected graph)
     logger.info("  Computing Louvain communities...")
     try:
         import community as community_louvain
@@ -167,19 +151,16 @@ def engineer_features():
                 partition[node] = i
         df["communityId"] = df["txId"].map(partition).fillna(-1).astype(int).values
 
-    # Clustering coefficient (undirected)
     logger.info("  Computing clustering coefficients...")
     G_undir = G.to_undirected()
     cc = nx.clustering(G_undir)
     df["clustering_coeff"] = df["txId"].map(cc).fillna(0).values
 
-    # Fill NaN amounts
     for col in ["amount_mean", "amount_skew"]:
         df[col] = df.groupby("timeStep")[col].transform(
             lambda x: x.fillna(x.median())
         )
 
-    # Final column order (must match model_config.json)
     final_cols = (
         ["txId", "timeStep", "class"]
         + FEATURE_COLS_BASE
@@ -188,7 +169,6 @@ def engineer_features():
     )
     df = df[final_cols]
 
-    # Validate
     assert df.shape == (203769, 177), f"Shape mismatch: {df.shape}"
     nan_counts = df.drop(columns=["class"]).select_dtypes("number").isna().sum()
     if nan_counts.sum() > 0:
@@ -199,10 +179,6 @@ def engineer_features():
     logger.info(f"Saved: {OUTPUT_PARQUET}  shape={df.shape}")
     return df
 
-
-# =========================================================================
-# STEP 3: Train baseline models
-# =========================================================================
 def train_baselines():
     """Train LR, RF, XGBoost baselines."""
     logger.info("")
@@ -223,16 +199,11 @@ def train_baselines():
     joblib.dump(xgb_model, xgb_path)
     logger.info(f"XGBoost checkpoint saved: {xgb_path}")
 
-    # Print results table
     df_results = pd.DataFrame(results)
     print("\n" + df_results.to_string(index=False))
 
     return results
 
-
-# =========================================================================
-# STEP 4: Train GNN models
-# =========================================================================
 def train_gnns():
     """Train GraphSAGE and GAT models."""
     logger.info("")
@@ -259,7 +230,6 @@ def train_gnns():
         "patience": 20,
     }
 
-    # --- GraphSAGE ---
     logger.info("")
     logger.info("-" * 40)
     logger.info("Training GraphSAGE (3L, h=128, mean)")
@@ -284,7 +254,6 @@ def train_gnns():
     )
     logger.info(f"GraphSAGE test metrics: {sage_metrics}")
 
-    # --- GAT ---
     logger.info("")
     logger.info("-" * 40)
     logger.info("Training GAT (2L, h=128, 4 heads)")
@@ -307,7 +276,6 @@ def train_gnns():
     )
     logger.info(f"GAT test metrics: {gat_metrics}")
 
-    # --- Update model_config.json ---
     config_path = os.path.join(CHECKPOINT_DIR, "model_config.json")
     if os.path.exists(config_path):
         with open(config_path) as f:
@@ -332,7 +300,6 @@ def train_gnns():
         json.dump(model_config, f, indent=2)
     logger.info(f"Updated {config_path}")
 
-    # Verify embeddings
     sage_model.eval()
     with torch.no_grad():
         emb = sage_model.get_embedding(data.x, data.edge_index)
@@ -342,10 +309,6 @@ def train_gnns():
 
     return sage_metrics, gat_metrics
 
-
-# =========================================================================
-# MAIN
-# =========================================================================
 def main():
     start = time.time()
 
@@ -353,19 +316,14 @@ def main():
     logger.info("ON-CHAIN FRAUD DETECTION — FULL TRAINING PIPELINE")
     logger.info("=" * 60)
 
-    # Step 1: Download
     download_dataset()
 
-    # Step 2: Engineer features
     engineer_features()
 
-    # Step 3: Train baselines
     baseline_results = train_baselines()
 
-    # Step 4: Train GNNs
     sage_metrics, gat_metrics = train_gnns()
 
-    # Summary
     elapsed = time.time() - start
     logger.info("")
     logger.info("=" * 60)
@@ -380,7 +338,6 @@ def main():
     logger.info(f"  - {CHECKPOINT_DIR}/xgb_baseline.pkl")
     logger.info(f"  - {CHECKPOINT_DIR}/model_config.json")
 
-    # Print final comparison
     print("\n" + "=" * 60)
     print("FINAL MODEL COMPARISON")
     print("=" * 60)
@@ -393,7 +350,6 @@ def main():
     cols_to_show = ["model", "pr_auc", "f1", "precision", "recall"]
     available = [c for c in cols_to_show if c in df.columns]
     print("\n" + df[available].to_string(index=False))
-
 
 if __name__ == "__main__":
     main()

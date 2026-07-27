@@ -1,16 +1,4 @@
 #!/bin/bash
-# scripts/download_elliptic.sh
-# Downloads the Elliptic Bitcoin Transaction Dataset from Kaggle.
-#
-# Prerequisites:
-#   - Kaggle CLI installed: pip install kaggle
-#   - Kaggle credentials configured: ~/.kaggle/kaggle.json
-#
-# Usage:
-#   bash scripts/download_elliptic.sh
-#
-# Compliance Disclaimer: This system is a research and portfolio
-# demonstration only. Not a certified AML/CFT compliance tool.
 
 set -euo pipefail
 
@@ -21,7 +9,6 @@ echo "========================================="
 echo "  Elliptic Dataset Download"
 echo "========================================="
 
-# Check if files already exist
 if [ -f "$DATA_DIR/elliptic_txs_features.csv" ] && \
    [ -f "$DATA_DIR/elliptic_txs_classes.csv" ] && \
    [ -f "$DATA_DIR/elliptic_txs_edgelist.csv" ]; then
@@ -33,13 +20,11 @@ fi
 echo "Downloading Elliptic dataset via Kaggle CLI..."
 echo "(Requires ~/.kaggle/kaggle.json to be configured)"
 
-# Via Kaggle CLI (requires ~/.kaggle/kaggle.json)
 kaggle datasets download -d ellipticco/elliptic-data-set -p "$DATA_DIR" --unzip
 
 echo ""
 echo "Validating downloaded files..."
 
-# Validate files present
 MISSING=0
 for f in elliptic_txs_features.csv elliptic_txs_classes.csv elliptic_txs_edgelist.csv; do
     if [ -f "$DATA_DIR/$f" ]; then
@@ -59,11 +44,10 @@ fi
 echo ""
 echo "Verifying SHA-256 hashes (BC-02)..."
 
-# Note: Update these placeholders with the actual Kaggle file hashes
 declare -A EXPECTED_HASHES
-EXPECTED_HASHES["elliptic_txs_features.csv"]="EXPECTED_HASH_FEATURES"
-EXPECTED_HASHES["elliptic_txs_classes.csv"]="EXPECTED_HASH_CLASSES"
-EXPECTED_HASHES["elliptic_txs_edgelist.csv"]="EXPECTED_HASH_EDGELIST"
+EXPECTED_HASHES["elliptic_txs_features.csv"]="fd7f83573443c9e302e371d3f110e3b6224160f5d1ed8a287757936127800ff0"
+EXPECTED_HASHES["elliptic_txs_classes.csv"]="93e2e7b2405c735ba752bf6ba06b947561deddd1f5a8fc91e46f6a4c0e439493"
+EXPECTED_HASHES["elliptic_txs_edgelist.csv"]="a35053ba68a98e4382cae2ba65b9d9e36b23b6439e02dff084971b1b72a5156e"
 
 HASH_FAILED=0
 for f in elliptic_txs_features.csv elliptic_txs_classes.csv elliptic_txs_edgelist.csv; do
@@ -87,10 +71,6 @@ fi
 echo ""
 echo "Row counts:"
 wc -l "$DATA_DIR"/*.csv
-# Expected:
-#   203770 elliptic_txs_features.csv  (header + 203769 rows)
-#   203770 elliptic_txs_classes.csv
-#   234356 elliptic_txs_edgelist.csv
 
 echo ""
 echo "========================================="

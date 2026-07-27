@@ -51,13 +51,11 @@ export default function WalletLookup() {
 
   useEffect(() => {
     if (activeAddress) {
-      // Mock API call for wallet data
       setIsLoadingWallet(true);
       setWalletData(null);
       setExplainData(null);
       
       setTimeout(() => {
-        // Pseudo-randomize based on string length to simulate different results
         const seed = activeAddress.length;
         const isIllicit = seed % 3 === 0;
         
@@ -91,7 +89,6 @@ export default function WalletLookup() {
   const handleExplain = () => {
     setIsLoadingExplain(true);
     setTimeout(() => {
-      // Mock Explain Data
       setExplainData({
         subgraph: {
           nodes: [
@@ -121,7 +118,7 @@ export default function WalletLookup() {
         </p>
       </div>
 
-      {/* Search Area */}
+      {}
       <SearchInput 
         placeholder="Enter wallet address or txId..."
         value={searchInput}
@@ -130,7 +127,7 @@ export default function WalletLookup() {
         isLoading={isLoadingWallet}
       />
 
-      {/* Loading Skeletons */}
+      {}
       {isLoadingWallet && (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-pulse">
           <div className="md:col-span-4 h-64 bg-surface rounded-md"></div>
@@ -138,11 +135,11 @@ export default function WalletLookup() {
         </div>
       )}
 
-      {/* Results */}
+      {}
       {walletData && !isLoadingWallet && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            {/* RiskGauge & Card */}
+            {}
             <div className="md:col-span-5 flex flex-col gap-6">
               <div className="bg-surface border border-border p-6 rounded-md shadow-card flex items-center justify-between">
                 <RiskGauge score={walletData.riskScore} />
@@ -172,7 +169,7 @@ export default function WalletLookup() {
               </div>
             </div>
 
-            {/* SHAP Features */}
+            {}
             <div className="md:col-span-7 bg-surface border border-border p-6 rounded-md shadow-card">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-h2 font-semibold">Feature Attribution (SHAP)</h2>
@@ -184,7 +181,7 @@ export default function WalletLookup() {
             </div>
           </div>
 
-          {/* Explain Button */}
+          {}
           {!explainData && (
             <button 
               onClick={handleExplain}
@@ -205,7 +202,7 @@ export default function WalletLookup() {
             </button>
           )}
 
-          {/* Explanation Panel */}
+          {}
           {explainData && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-in slide-in-from-bottom-4 duration-slow">
               <div className="md:col-span-7 bg-surface border border-border p-1 rounded-md shadow-card">

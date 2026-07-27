@@ -27,12 +27,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Feature columns per PLAN.md contract
 FEATURE_COLS = [f"f{i}" for i in range(1, 167)] + [
     "tx_freq", "amount_mean", "amount_skew", "address_age",
     "clustering_coeff", "burst_score", "pageRank", "communityId",
 ]
-
 
 def load_pyg_data(
     parquet_path: str = "data/processed/features_combined.parquet",
@@ -53,41 +51,30 @@ def load_pyg_data(
     logger.info(f"Loading parquet: {parquet_path}")
     df = pd.read_parquet(parquet_path)
 
-    # Build txId -> integer index mapping
     tx_ids = df["txId"].values
     id_to_idx = {str(tx_id): idx for idx, tx_id in enumerate(tx_ids)}
     n_nodes = len(df)
 
-    # -----------------------------------------------------------------------
-    # 1. Feature matrix (N, 174)
-    # -----------------------------------------------------------------------
     x = torch.tensor(df[FEATURE_COLS].values, dtype=torch.float32)
     logger.info(f"Feature matrix: {x.shape}")
 
-    # -----------------------------------------------------------------------
-    # 2. Labels: 0=licit, 1=illicit, -1=unknown
-    # -----------------------------------------------------------------------
     y = torch.full((n_nodes,), -1, dtype=torch.long)
-    y[df["class"] == "1"] = 1    # illicit
-    y[df["class"] == "2"] = 0    # licit
-    # "unknown" stays -1
+    y[df["class"] == "1"] = 1    
+    y[df["class"] == "2"] = 0    
 
     logger.info(
         f"Labels: illicit={int((y == 1).sum())}, "
         f"licit={int((y == 0).sum())}, unknown={int((y == -1).sum())}"
     )
 
-    # -----------------------------------------------------------------------
-    # 3. Edge index
-    # -----------------------------------------------------------------------
     if mock_edges or not os.path.exists(edgelist_path):
         if not mock_edges:
             logger.warning(
                 f"Edgelist not found at {edgelist_path} -- generating mock edges"
             )
-        # Generate random edges for mock/dev data
+
         rng = np.random.default_rng(42)
-        n_edges = 234355  # Match real Elliptic edge count
+        n_edges = 234355  
         src = rng.integers(0, n_nodes, size=n_edges)
         dst = rng.integers(0, n_nodes, size=n_edges)
         edge_index = torch.tensor(np.stack([src, dst]), dtype=torch.long)
@@ -95,7 +82,6 @@ def load_pyg_data(
         logger.info(f"Loading edgelist: {edgelist_path}")
         edges_df = pd.read_csv(edgelist_path)
 
-        # Map txIds to integer indices
         src_col = edges_df.columns[0]
         dst_col = edges_df.columns[1]
 
@@ -114,9 +100,6 @@ def load_pyg_data(
 
     logger.info(f"Edge index: {edge_index.shape}")
 
-    # -----------------------------------------------------------------------
-    # 4. Temporal split masks (labeled only, unknown excluded)
-    # -----------------------------------------------------------------------
     time_steps = df["timeStep"].values
     labeled = (y >= 0)
 
@@ -129,9 +112,6 @@ def load_pyg_data(
         f"val={int(val_mask.sum())}, test={int(test_mask.sum())}"
     )
 
-    # -----------------------------------------------------------------------
-    # 5. Assemble Data object
-    # -----------------------------------------------------------------------
     data = Data(
         x=x,
         edge_index=edge_index,
@@ -142,14 +122,8 @@ def load_pyg_data(
         test_mask=test_mask,
     )
 
-    # -----------------------------------------------------------------------
-    # 6. Invariant checks (mandatory per ml_models.md section 1)
-    # -----------------------------------------------------------------------
-    assert (data.y[data.train_mask] == -1).sum() == 0, \
-        "CRITICAL BUG: Unknown nodes in train_mask"
-    assert data.train_mask.sum() + data.val_mask.sum() + data.test_mask.sum() == \
-        (data.y >= 0).sum(), \
-        "Mask counts don't match labeled node count"
+    assert (data.y[data.train_mask] == -1).sum() == 0,        "CRITICAL BUG: Unknown nodes in train_mask"
+    assert data.train_mask.sum() + data.val_mask.sum() + data.test_mask.sum() ==        (data.y >= 0).sum(),        "Mask counts don't match labeled node count"
     assert data.x.shape[0] == 203769, f"Node count mismatch: {data.x.shape[0]}"
 
     logger.info("All invariant checks passed")

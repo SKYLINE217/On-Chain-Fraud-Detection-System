@@ -7,11 +7,9 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data
 
-
 def build_tree_explainer(xgb_model):
     """Fast, exact SHAP for XGBoost baseline."""
     return shap.TreeExplainer(xgb_model)
-
 
 def build_kernel_explainer(model: torch.nn.Module, data: Data, n_background: int = 100):
     """
@@ -23,7 +21,7 @@ def build_kernel_explainer(model: torch.nn.Module, data: Data, n_background: int
 
     Background sample: random subset of n_background labeled nodes.
     """
-    # Random background sample from labeled nodes
+
     labeled_mask = (data.y >= 0)
     labeled_indices = labeled_mask.nonzero(as_tuple=True)[0]
     bg_indices = labeled_indices[
@@ -41,10 +39,9 @@ def build_kernel_explainer(model: torch.nn.Module, data: Data, n_background: int
     explainer = shap.KernelExplainer(gnn_predict, background)
     return explainer
 
-
 def compute_shap_for_node(
-    explainer,  # TreeExplainer or KernelExplainer
-    x_node: np.ndarray,  # shape (1, n_features)
+    explainer,  
+    x_node: np.ndarray,  
     feature_names: list[str],
     top_k: int = 10,
 ) -> list[dict]:
@@ -56,13 +53,11 @@ def compute_shap_for_node(
     """
     shap_values = explainer.shap_values(x_node)
 
-    # For binary classification: shap_values is list[ndarray] — take illicit class (index 1)
     if isinstance(shap_values, list):
-        sv = shap_values[1][0]  # illicit class, single node
+        sv = shap_values[1][0]  
     else:
-        sv = shap_values[0]     # XGBoost binary returns single array
+        sv = shap_values[0]     
 
-    # Sort by |shap_value| descending
     sorted_idx = np.argsort(np.abs(sv))[::-1][:top_k]
 
     return [

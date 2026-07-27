@@ -1,44 +1,21 @@
-# docker-compose.yml
-# onchain-fraud-gnn — Full service map
-# Reference: system_design.md §4
-#
-# Stage 1: only neo4j + redis needed
-# Stage 3+: fastapi, bff, batch-job wired in
-#
-# Compliance Disclaimer: This system is a research and portfolio
-# demonstration only. Not a certified AML/CFT compliance tool.
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
 
 services:
-  neo4j:
-    image: neo4j:5
-    environment:
-      # DO-01: Use env var with required check — no hardcoded password
-      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}"
-      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
-      NEO4J_dbms_memory_heap_initial__size: 4G
-      NEO4J_dbms_memory_heap_max__size: 4G
-      NEO4J_dbms_memory_pagecache_size: 1G
-    ports:
-      # DO-02: Bind to localhost only — not exposed to external network
-      - "127.0.0.1:7474:7474"   # Browser UI
-      - "127.0.0.1:7687:7687"   # Bolt protocol
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-    healthcheck:
-      test: ["CMD", "neo4j", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   redis:
     image: redis:7-alpine
-    # DO-02: No host port binding — only internal Docker network access
-    # Services on the same Docker network can still reach redis:6379
+    networks:
+      - backend
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -47,26 +24,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+    networks:
+      - backend
+      - frontend
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
-      neo4j:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       MODEL_CHECKPOINT: /app/checkpoints/best_model.pt
       MODEL_CONFIG: /app/checkpoints/model_config.json
-      API_KEY: ${API_KEY:-dev_key_change_me}
+      API_KEY: ${API_KEY:?API_KEY must be set in .env}
       ENV: ${ENV:-production}
     volumes:
       - ./checkpoints:/app/checkpoints:ro
       - ./data/processed:/app/data/processed:ro
-    # DO-05: Add healthcheck for FastAPI container
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -79,22 +56,22 @@ services:
     build:
       context: ./frontend/client
       dockerfile: Dockerfile
+    networks:
+      - frontend
     ports:
-      - "3000:80"
+      - "3000:8080"
 
   batch-job:
     build:
       context: .
       dockerfile: Dockerfile.api
-    depends_on:
-      neo4j:
-        condition: service_healthy
+    networks:
+      - backend
     environment:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      # DO-01: Use env var — not hardcoded password
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       MODEL_CHECKPOINT: /app/checkpoints/best_model.pt
       MODEL_CONFIG: /app/checkpoints/model_config.json
     volumes:
@@ -105,6 +82,4 @@ services:
       - batch   # run manually: docker-compose --profile batch up batch-job
 
 volumes:
-  neo4j_data:
-  neo4j_logs:
   redis_data:

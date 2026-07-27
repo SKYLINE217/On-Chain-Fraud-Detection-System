@@ -26,21 +26,16 @@ import pandas as pd
 import sys
 import os
 
-# Default path — override with CLI arg
 DEFAULT_PATH = "data/processed/features_combined.parquet"
 
-# Feature columns per PLAN.md contract
 FEATURE_COLS = [f"f{i}" for i in range(1, 167)] + [
     "tx_freq", "amount_mean", "amount_skew", "address_age",
     "clustering_coeff", "burst_score", "pageRank", "communityId",
 ]
 
-# All required columns
 REQUIRED_COLS = ["txId", "timeStep", "class"] + FEATURE_COLS
 
-# Valid class values
 VALID_CLASSES = {"1", "2", "unknown"}
-
 
 def verify_parquet(parquet_path: str) -> bool:
     """
@@ -62,44 +57,31 @@ def verify_parquet(parquet_path: str) -> bool:
     print(f"Validating: {parquet_path}")
     df = pd.read_parquet(parquet_path)
 
-    # 1. Shape check
-    # NOTE: PLAN.md states shape (203769, 171) but explicitly lists 177 columns
-    # (txId + timeStep + class + f1..f166 + 8 engineered = 3 + 166 + 8 = 177).
-    # The column list is authoritative.
-    assert df.shape == (203769, 177), \
-        f"[FAIL] Shape mismatch: {df.shape}  expected (203769, 177)"
+    assert df.shape == (203769, 177),        f"[FAIL] Shape mismatch: {df.shape}  expected (203769, 177)"
     print(f"  [PASS] Shape: {df.shape}")
 
-    # 2. Column existence
     missing = [col for col in REQUIRED_COLS if col not in df.columns]
     assert len(missing) == 0, f"[FAIL] Missing columns: {missing}"
     print(f"  [PASS] All {len(REQUIRED_COLS)} required columns present")
 
-    # 3. Zero NaNs in feature columns
     nan_count = df[FEATURE_COLS].isna().sum().sum()
     assert nan_count == 0, f"[FAIL] NaN count in features: {nan_count}  (expected 0)"
     print(f"  [PASS] Zero NaNs in feature columns")
 
-    # 4. Class values
     actual_classes = set(df["class"].unique())
-    assert actual_classes.issubset(VALID_CLASSES), \
-        f"[FAIL] Unexpected class values: {actual_classes - VALID_CLASSES}"
+    assert actual_classes.issubset(VALID_CLASSES),        f"[FAIL] Unexpected class values: {actual_classes - VALID_CLASSES}"
     print(f"  [PASS] Class values: {actual_classes}")
 
-    # 5. Temporal range
     ts_min, ts_max = df["timeStep"].min(), df["timeStep"].max()
-    assert ts_min == 1 and ts_max == 49, \
-        f"[FAIL] timeStep range: {ts_min}-{ts_max}  expected 1-49"
+    assert ts_min == 1 and ts_max == 49,        f"[FAIL] timeStep range: {ts_min}-{ts_max}  expected 1-49"
     print(f"  [PASS] timeStep range: {ts_min}-{ts_max}")
 
-    # 6. Class distribution summary
     class_dist = df["class"].value_counts().to_dict()
     print(f"\n  Class distribution:")
     for cls, count in sorted(class_dist.items()):
         pct = count / len(df) * 100
         print(f"    {cls}: {count:,} ({pct:.1f}%)")
 
-    # 7. Labeled node statistics (for temporal split)
     labeled = df[df["class"] != "unknown"]
     train = labeled[labeled["timeStep"] <= 34]
     val = labeled[(labeled["timeStep"] >= 35) & (labeled["timeStep"] <= 39)]
@@ -116,7 +98,6 @@ def verify_parquet(parquet_path: str) -> bool:
 
     print(f"\n[PASS] Parquet validated successfully: {parquet_path}")
     return True
-
 
 if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PATH

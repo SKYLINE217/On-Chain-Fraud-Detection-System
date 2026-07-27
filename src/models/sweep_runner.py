@@ -8,7 +8,6 @@ Run this as:
 import os
 import sys
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import wandb
@@ -38,7 +37,7 @@ def sweep_train():
             hidden_channels=cfg.hidden_channels,
             out_channels=2,
             dropout=cfg.dropout,
-            # GAT doesn't use aggr parameter, and num_layers is fixed in our arch to 2
+
         )
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -51,7 +50,7 @@ def sweep_train():
     )
 
 if __name__ == "__main__":
-    # If run directly (not via wandb agent)
+
     sweep_id = wandb.sweep(
         sweep=open("src/models/sweep_config.yaml"),
         project="onchain-fraud-gnn"

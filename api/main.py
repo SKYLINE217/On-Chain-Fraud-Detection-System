@@ -1,4 +1,4 @@
-# api/main.py
+
 """
 FastAPI application factory for onchain-fraud-gnn.
 See person_a_stages.md §3.1, security.md §3.2, §5, §6 for full reference.
@@ -32,20 +32,17 @@ app = FastAPI(
     openapi_url="/openapi.json" if os.environ.get("ENV") != "production" else None,
 )
 
-# ── CORS (locked to BFF only) ──────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://bff:3000", "http://localhost:3000"],  # Docker internal + dev
+    allow_origins=["http://bff:3000", "http://localhost:3000"],  
     allow_methods=["GET", "POST"],
     allow_headers=["X-API-Key", "Content-Type"],
     allow_credentials=False,
 )
 
-# ── Rate Limiting (secondary layer — BFF is primary) ───
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
-
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
@@ -54,28 +51,23 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
         content={"error": "Rate limit exceeded. Try again later."}
     )
 
-
-# ── Exception Handlers (no info leakage — security.md §10) ─
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    # Never return exc details to client in production
+
     return JSONResponse(
         status_code=500,
         content={"error": "Internal server error"}
     )
 
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Pydantic errors are safe to return (field-level only, no internals)
+
     return JSONResponse(
         status_code=422,
         content={"error": "Validation failed", "details": exc.errors()}
     )
 
-
-# ── Register Routers ───────────────────────────────────
 app.include_router(
     wallet.router,
     prefix="/wallet",

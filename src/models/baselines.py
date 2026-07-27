@@ -42,14 +42,11 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Feature columns per PLAN.md contract.
-# communityId excluded from tabular features (categorical, not meaningful as float).
 FEATURE_COLS = [f"f{i}" for i in range(1, 167)] + [
     "tx_freq", "amount_mean", "amount_skew", "address_age",
     "clustering_coeff", "burst_score", "pageRank",
-    # communityId excluded — categorical, not meaningful as float
-]
 
+]
 
 def load_and_split(parquet_path: str) -> tuple:
     """
@@ -68,17 +65,12 @@ def load_and_split(parquet_path: str) -> tuple:
     """
     df = pd.read_parquet(parquet_path)
 
-    # Contract validation
-    # NOTE: PLAN.md states 171 but the explicitly listed columns total 177
-    # (txId + timeStep + class + f1..f166 + 8 engineered = 3 + 166 + 8 = 177)
     assert df.shape == (203769, 177), f"Unexpected shape: {df.shape}"
     assert df[FEATURE_COLS].isna().sum().sum() == 0, "NaNs found in features"
 
-    # Labeled only (exclude unknown)
     labeled = df[df["class"] != "unknown"].copy()
-    labeled["y"] = (labeled["class"] == "1").astype(int)  # 1=illicit, 0=licit
+    labeled["y"] = (labeled["class"] == "1").astype(int)  
 
-    # Temporal split — non-negotiable
     train = labeled[labeled["timeStep"] <= 34]
     val = labeled[(labeled["timeStep"] >= 35) & (labeled["timeStep"] <= 39)]
     test = labeled[labeled["timeStep"] >= 40]
@@ -91,7 +83,6 @@ def load_and_split(parquet_path: str) -> tuple:
         val[FEATURE_COLS].values, val["y"].values,
         test[FEATURE_COLS].values, test["y"].values,
     )
-
 
 def eval_metrics(
     y_true: np.ndarray,
@@ -128,7 +119,6 @@ def eval_metrics(
     )
     return metrics
 
-
 def run_all_baselines(
     parquet_path: str,
     use_wandb: bool = True,
@@ -161,18 +151,14 @@ def run_all_baselines(
 
     X_train, y_train, X_val, y_val, X_test, y_test = load_and_split(parquet_path)
 
-    # Standardize for LR (not needed for tree models but doesn't hurt)
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_val_s = scaler.transform(X_val)
     X_test_s = scaler.transform(X_test)
 
     results = []
-    pr_curve_data = {}  # Store PR curve data for plotting
+    pr_curve_data = {}  
 
-    # -----------------------------------------------------------------------
-    # 1. Logistic Regression
-    # -----------------------------------------------------------------------
     if use_wandb:
         wandb.init(project="onchain-fraud-gnn", name="baseline-lr", reinit=True)
 
@@ -185,7 +171,6 @@ def run_all_baselines(
     lr_metrics = eval_metrics(y_test, lr_probs, "LogisticRegression")
     results.append(lr_metrics)
 
-    # Store PR curve data
     lr_precision, lr_recall, _ = precision_recall_curve(y_test, lr_probs)
     pr_curve_data["LogisticRegression"] = (lr_recall, lr_precision, lr_probs, y_test)
 
@@ -193,9 +178,6 @@ def run_all_baselines(
         wandb.log(lr_metrics)
         wandb.finish()
 
-    # -----------------------------------------------------------------------
-    # 2. Random Forest
-    # -----------------------------------------------------------------------
     if use_wandb:
         wandb.init(project="onchain-fraud-gnn", name="baseline-rf", reinit=True)
 
@@ -213,7 +195,6 @@ def run_all_baselines(
     rf_metrics = eval_metrics(y_test, rf_probs, "RandomForest")
     results.append(rf_metrics)
 
-    # Store PR curve data
     rf_precision, rf_recall, _ = precision_recall_curve(y_test, rf_probs)
     pr_curve_data["RandomForest"] = (rf_recall, rf_precision, rf_probs, y_test)
 
@@ -221,9 +202,6 @@ def run_all_baselines(
         wandb.log(rf_metrics)
         wandb.finish()
 
-    # -----------------------------------------------------------------------
-    # 3. XGBoost (primary tabular baseline)
-    # -----------------------------------------------------------------------
     scale_pos_weight = (y_train == 0).sum() / max((y_train == 1).sum(), 1)
 
     if use_wandb:
@@ -240,7 +218,7 @@ def run_all_baselines(
         eval_metric="aucpr",
         early_stopping_rounds=30,
         random_state=42,
-        tree_method="hist",     # fast CPU training
+        tree_method="hist",     
         device="cpu",
     )
     xgb.fit(
@@ -252,7 +230,6 @@ def run_all_baselines(
     xgb_metrics = eval_metrics(y_test, xgb_probs, "XGBoost")
     results.append(xgb_metrics)
 
-    # Store PR curve data
     xgb_precision, xgb_recall, _ = precision_recall_curve(y_test, xgb_probs)
     pr_curve_data["XGBoost"] = (xgb_recall, xgb_precision, xgb_probs, y_test)
 

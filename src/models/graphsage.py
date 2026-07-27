@@ -24,7 +24,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
-
 class GraphSAGE(nn.Module):
     """
     GraphSAGE node classifier for on-chain fraud detection.
@@ -54,16 +53,13 @@ class GraphSAGE(nn.Module):
         self.dropout = dropout
         self.num_layers = num_layers
 
-        # Input layer
         self.convs.append(SAGEConv(in_channels, hidden_channels, aggr=aggr))
         self.bns.append(nn.BatchNorm1d(hidden_channels))
 
-        # Hidden layers
         for _ in range(num_layers - 2):
             self.convs.append(SAGEConv(hidden_channels, hidden_channels, aggr=aggr))
             self.bns.append(nn.BatchNorm1d(hidden_channels))
 
-        # Output layer (no BN, no activation -- logits for CrossEntropyLoss)
         self.convs.append(SAGEConv(hidden_channels, out_channels, aggr=aggr))
 
     def forward(
@@ -94,8 +90,8 @@ class GraphSAGE(nn.Module):
             x = self.bns[i](x)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-        # Apply second-to-last conv (gets to hidden_channels space)
+
         x = self.convs[-2](x, edge_index)
         x = self.bns[-1](x)
         x = F.relu(x)
-        return x  # shape: (N, hidden_channels)
+        return x  

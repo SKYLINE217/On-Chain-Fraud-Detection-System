@@ -1,4 +1,4 @@
-# src/features/engineer.py
+
 """
 Compute 5 engineered features + run GDS algorithms on Neo4j.
 Reads CSVs directly (not Neo4j) for vectorized speed; writes GDS results back to Neo4j.
@@ -25,7 +25,6 @@ EDGELIST_PATH  = "data/raw/elliptic_txs_edgelist.csv"
 OUTPUT_PATH    = "data/processed/features_combined.parquet"
 FEATURE_COLS   = [f"f{i}" for i in range(1, 167)]
 
-
 def load_base(features_path, classes_path, edgelist_path):
     features = pd.read_csv(features_path, header=None,
                            names=["txId", "timeStep"] + FEATURE_COLS)
@@ -39,7 +38,6 @@ def load_base(features_path, classes_path, edgelist_path):
     df["class"] = df["class"].fillna("unknown").astype(str)
     return df, edges
 
-
 def compute_tx_freq(df: pd.DataFrame, edges: pd.DataFrame) -> pd.Series:
     """In+out degree per node per timestep (rolling 3-step window)."""
     out_deg = edges.groupby("src").size().rename("out_deg")
@@ -48,24 +46,19 @@ def compute_tx_freq(df: pd.DataFrame, edges: pd.DataFrame) -> pd.Series:
     deg = deg.join(out_deg, on="txId").join(in_deg, on="txId").fillna(0)
     return (deg["out_deg"] + deg["in_deg"]).rename("tx_freq")
 
-
 def compute_amount_features(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
     """
     Proxy BTC amount from Elliptic raw features.
     Features f93-f94 approximate input/output amounts on local tx.
     If Etherscan CSV is available, merge it in.
     """
-    # Use f93 (local total BTC input proxy) as amount surrogate
-    # Mean + skew computed per communityId group (approximated per-node here)
-    # Real amount enrichment would come from Etherscan merge
 
-    # Rolling window stats per timeStep
     amount_mean = (
         df.groupby("timeStep")["f93"]
         .transform("mean")
         .rename("amount_mean")
     )
-    # Skew per timeStep
+
     amount_skew = (
         df.groupby("timeStep")["f93"]
         .transform(lambda x: skew(x.fillna(0)))
@@ -73,12 +66,10 @@ def compute_amount_features(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
     )
     return amount_mean, amount_skew
 
-
 def compute_address_age(df: pd.DataFrame) -> pd.Series:
     """Timestep of first appearance per txId."""
     first_seen = df.groupby("txId")["timeStep"].transform("min")
     return first_seen.rename("address_age")
-
 
 def compute_burst_score(df: pd.DataFrame, edges: pd.DataFrame) -> np.ndarray:
     """
@@ -92,8 +83,7 @@ def compute_burst_score(df: pd.DataFrame, edges: pd.DataFrame) -> np.ndarray:
     step_mean = df_with_deg.groupby("timeStep")["out_deg"].transform("mean")
     step_std  = df_with_deg.groupby("timeStep")["out_deg"].transform("std").replace(0, 1)
     burst = ((df_with_deg["out_deg"] - step_mean) / step_std).rename("burst_score")
-    return burst.values  # return as array aligned to df index
-
+    return burst.values  
 
 def run_gds_algorithms(driver) -> pd.DataFrame:
     """
@@ -102,10 +92,9 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
     CRITICAL: Run ONCE. Never re-run GDS separately from parquet export.
     """
     with driver.session() as session:
-        # Drop if exists
+
         session.run("CALL gds.graph.drop('fraud-graph', false) YIELD graphName")
-        
-        # Create in-memory graph projection
+
         session.run("""
             CALL gds.graph.project(
               'fraud-graph',
@@ -115,7 +104,6 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         """)
         logger.info("Graph projected.")
 
-        # PageRank
         session.run("""
             CALL gds.pageRank.write('fraud-graph', {
               writeProperty: 'pageRank',
@@ -126,7 +114,6 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         """)
         logger.info("PageRank written.")
 
-        # Louvain community detection
         session.run("""
             CALL gds.louvain.write('fraud-graph', {
               writeProperty: 'communityId',
@@ -135,11 +122,10 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         """)
         logger.info("Louvain communityId written.")
 
-        # Local clustering coefficient requires UNDIRECTED graph
         session.run("CALL gds.graph.drop('fraud-graph', false) YIELD graphName")
-        
+
         session.run("CALL gds.graph.drop('fraud-graph-undir', false) YIELD graphName")
-        
+
         session.run("""
             CALL gds.graph.project(
               'fraud-graph-undir',
@@ -158,7 +144,7 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         session.run("CALL gds.graph.drop('fraud-graph-undir', false) YIELD graphName")
 
     logger.info("GDS complete. Reading back properties...")
-    # Read all GDS-computed properties back from Neo4j
+
     with driver.session() as session:
         result = session.run("""
             MATCH (t:Transaction)
@@ -168,7 +154,6 @@ def run_gds_algorithms(driver) -> pd.DataFrame:
         records = [r.data() for r in result]
 
     return pd.DataFrame(records)
-
 
 def build_features_parquet():
     """Full pipeline: load → engineer → GDS → export parquet."""
@@ -183,18 +168,20 @@ def build_features_parquet():
     df["address_age"] = compute_address_age(df)
     df["burst_score"] = compute_burst_score(df, edges)
 
-    # Fill NaN amounts with per-timeStep median
     for col in ["amount_mean", "amount_skew"]:
         df[col] = df.groupby("timeStep")[col].transform(
             lambda x: x.fillna(x.median())
         )
 
-    # Run GDS algorithms and merge
+    neo4j_pwd = os.environ.get("NEO4J_PASSWORD")
+    if not neo4j_pwd:
+        raise ValueError("NEO4J_PASSWORD environment variable is not set")
+
     driver = GraphDatabase.driver(
         os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
         auth=(
             os.environ.get("NEO4J_USER", "neo4j"),
-            os.environ.get("NEO4J_PASSWORD", "changeme_in_prod"),
+            neo4j_pwd,
         )
     )
     try:
@@ -204,7 +191,6 @@ def build_features_parquet():
 
     df = df.merge(gds_df, on="txId", how="left")
 
-    # Final column order (must match model_config.json feature_columns)
     final_cols = (
         ["txId", "timeStep", "class"]
         + FEATURE_COLS
@@ -213,10 +199,8 @@ def build_features_parquet():
     )
     df = df[final_cols]
 
-    # Rename clusteringCoeff → clustering_coeff for consistency with ml_models.md
     df = df.rename(columns={"clusteringCoeff": "clustering_coeff"})
 
-    # Validate shape and NaNs
     assert df.shape == (203769, 177), f"Shape mismatch: {df.shape}"
     nan_counts = df.drop(columns=["class"]).select_dtypes("number").isna().sum()
     if nan_counts.sum() > 0:
@@ -226,7 +210,6 @@ def build_features_parquet():
     df.to_parquet(OUTPUT_PATH, index=False)
     logger.info(f"Saved: {OUTPUT_PATH}  shape={df.shape}")
     return df
-
 
 if __name__ == "__main__":
     build_features_parquet()

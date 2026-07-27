@@ -29,13 +29,12 @@ import logging
 import os
 import sys
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 import joblib
 import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend for server/CI
+matplotlib.use("Agg")  
 import matplotlib.pyplot as plt
 from sklearn.metrics import PrecisionRecallDisplay
 
@@ -47,13 +46,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Paths
 REAL_PARQUET = "data/processed/features_combined.parquet"
 MOCK_PARQUET = "mocks/person_a/mock_features_combined.parquet"
 CHECKPOINT_DIR = "checkpoints"
 XGB_CHECKPOINT = os.path.join(CHECKPOINT_DIR, "xgb_baseline.pkl")
 PR_CURVE_PATH = "docs/figures/pr_curve_baselines.png"
-
 
 def generate_mock_if_needed(mock_path: str) -> str:
     """Generate mock parquet if it doesn't exist."""
@@ -64,7 +61,6 @@ def generate_mock_if_needed(mock_path: str) -> str:
     logger.info("Generating mock parquet data...")
     from mocks.person_a.generate_mock_parquet import generate_mock_parquet
     return generate_mock_parquet(mock_path)
-
 
 def plot_pr_curves(pr_curve_data: dict, output_path: str) -> str:
     """
@@ -80,9 +76,9 @@ def plot_pr_curves(pr_curve_data: dict, output_path: str) -> str:
     fig, ax = plt.subplots(figsize=(8, 6))
 
     colors = {
-        "LogisticRegression": "#3b82f6",   # blue
-        "RandomForest": "#22c55e",          # green
-        "XGBoost": "#ef4444",               # red
+        "LogisticRegression": "#3b82f6",   
+        "RandomForest": "#22c55e",          
+        "XGBoost": "#ef4444",               
     }
 
     for model_name, (recall, precision, probs, y_test) in pr_curve_data.items():
@@ -110,7 +106,6 @@ def plot_pr_curves(pr_curve_data: dict, output_path: str) -> str:
     logger.info(f"PR curve saved: {output_path}")
     return output_path
 
-
 def main():
     parser = argparse.ArgumentParser(description="Stage 1: Baseline Models")
     parser.add_argument(
@@ -129,9 +124,6 @@ def main():
 
     use_wandb = not args.no_wandb
 
-    # -----------------------------------------------------------------------
-    # 1. Determine parquet path
-    # -----------------------------------------------------------------------
     if args.parquet_path:
         parquet_path = args.parquet_path
     elif args.mock:
@@ -140,9 +132,6 @@ def main():
     else:
         parquet_path = REAL_PARQUET
 
-    # -----------------------------------------------------------------------
-    # 2. Verify parquet
-    # -----------------------------------------------------------------------
     logger.info("=" * 60)
     logger.info("STEP 1: Verifying parquet data")
     logger.info("=" * 60)
@@ -151,9 +140,6 @@ def main():
         logger.error("Parquet verification failed — aborting")
         sys.exit(1)
 
-    # -----------------------------------------------------------------------
-    # 3. Run baselines
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 2: Training baseline models")
@@ -166,9 +152,6 @@ def main():
         use_wandb=use_wandb,
     )
 
-    # -----------------------------------------------------------------------
-    # 4. Save XGBoost checkpoint for Stage 4 SHAP
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 3: Saving XGBoost checkpoint")
@@ -179,9 +162,6 @@ def main():
     ckpt_size = os.path.getsize(XGB_CHECKPOINT) / (1024 * 1024)
     logger.info(f"XGBoost checkpoint saved: {XGB_CHECKPOINT} ({ckpt_size:.1f} MB)")
 
-    # -----------------------------------------------------------------------
-    # 5. Generate PR curve figure
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 4: Generating PR curve figure")
@@ -189,9 +169,6 @@ def main():
 
     plot_pr_curves(pr_curve_data, PR_CURVE_PATH)
 
-    # -----------------------------------------------------------------------
-    # 6. Print results table
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("RESULTS — Baseline Model Comparison")
@@ -204,16 +181,13 @@ def main():
         print("\n⚠ NOTE: Results above are from MOCK data — not real Elliptic features.")
         print("  Re-run against real data after Person A delivers features_combined.parquet.")
 
-    # -----------------------------------------------------------------------
-    # 7. Stage 1 checklist verification
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STAGE 1 CHECKLIST")
     logger.info("=" * 60)
 
     checks = {
-        "verify_parquet.py passes": True,  # Already ran above
+        "verify_parquet.py passes": True,  
         "XGBoost checkpoint saved": os.path.exists(XGB_CHECKPOINT),
         "PR curve figure generated": os.path.exists(PR_CURVE_PATH),
         "3 baseline results logged": len(results) == 3,
@@ -234,7 +208,6 @@ def main():
     else:
         logger.error("\n❌ Some checks failed — review output above")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-# api/routers/cluster.py
+
 """
 Cluster (community) endpoints for the Cluster Explorer tab.
 See person_a_stages.md §5.2 for full reference.
@@ -6,20 +6,19 @@ See person_a_stages.md §5.2 for full reference.
 Compliance Disclaimer: This system is a research and portfolio
 demonstration only. Not a certified AML/CFT compliance tool.
 """
-from fastapi import APIRouter, Depends, Path
-from typing import Annotated
+from fastapi import APIRouter, Depends, Path, Query
+from typing import Annotated, Literal
 from api.deps import get_neo4j_driver
 from api.middleware.auth import verify_api_key
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
-
 @router.get("/list")
 async def list_clusters(
-    sort: str = "avg_risk",
+    sort: Literal["avg_risk", "max_risk", "size"] = "avg_risk",
     min_risk: float = 0.0,
     min_size: int = 10,
-    limit: int = 100,
+    limit: int = Query(default=100, le=500),
     driver=Depends(get_neo4j_driver),
 ):
     """Return top clusters sorted by avg_risk (for Cluster Explorer tab)."""
@@ -41,7 +40,6 @@ async def list_clusters(
         )
         return [r.data() async for r in result]
 
-
 @router.get("/{cluster_id}")
 async def get_cluster(
     cluster_id: Annotated[int, Path(ge=0, le=2_147_483_647)],
@@ -61,7 +59,6 @@ async def get_cluster(
         )
         wallets = [r.data() async for r in result]
 
-    # Summary stats
     async with driver.session() as session:
         summary = await session.run(
             """

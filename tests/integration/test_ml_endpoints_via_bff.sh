@@ -1,12 +1,9 @@
 #!/bin/bash
-# tests/integration/test_ml_endpoints_via_bff.sh
-# Tests ML endpoints through the full Node BFF → FastAPI stack
 set -e
 
 BFF_URL="http://localhost:3000"
 TEST_ADDR="896630"
 
-# Check if BFF is running before testing
 if ! curl -s -o /dev/null -w "%{http_code}" "$BFF_URL" | grep -q "200\|404"; then
     echo "BFF is not running at $BFF_URL. Cannot run integration tests."
     exit 0
@@ -14,13 +11,11 @@ fi
 
 echo "Testing ML endpoints via BFF..."
 
-# Explain endpoint
 RESPONSE=$(curl -s -X POST "$BFF_URL/api/explain/$TEST_ADDR" \
   -H "Content-Type: application/json" \
   -d '{}' \
   --max-time 30)
 
-# Check required fields
 echo "$RESPONSE" | python3 -c "
 import json, sys
 try:
@@ -39,7 +34,6 @@ print(f'   SHAP features: {len(d[\"shap_top_features\"])}')
 print(f'   Rationale preview: {d[\"rationale\"][:60]}...')
 "
 
-# Explain rate limit: 6th request should be 429
 echo "Testing explain rate limit..."
 for i in $(seq 1 5); do
   curl -s -o /dev/null -X POST "$BFF_URL/api/explain/$TEST_ADDR" \
@@ -51,7 +45,6 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BFF_URL/api/explain/$T
 [ "$STATUS" = "429" ] && echo "✅ Explain rate limit (5/min) enforced" \
   || echo "⚠ Rate limit not triggered (may need more requests)"
 
-# Invalid address → 400
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BFF_URL/api/wallet/../../../../etc/passwd")
 [ "$STATUS" = "400" ] && echo "✅ Path traversal blocked → 400" \
   || echo "⚠ Unexpected status for path traversal: $STATUS"

@@ -3,7 +3,7 @@ POST /score — batch scoring for a list of addresses.
 Returns pre-computed scores from Neo4j (no model inference on hot path).
 """
 from fastapi import APIRouter, Depends
-# Using Any instead of neo4j.AsyncDriver for typing if neo4j is missing.
+
 try:
     from neo4j import AsyncDriver
 except ImportError:
@@ -13,14 +13,13 @@ try:
     from api.deps import get_neo4j_driver
     from api.middleware.auth import verify_api_key
 except ImportError:
-    # Mocks for unit testing if Person A/C haven't built these yet
+
     async def get_neo4j_driver(): yield None
     async def verify_api_key(): pass
 
 from api.models.requests import BatchScoreRequest
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
-
 
 @router.post("")
 async def batch_score(
@@ -32,7 +31,7 @@ async def batch_score(
     Scores come from Neo4j (written by nightly batch job) — no GNN inference.
     Max 1000 addresses per request.
     """
-    addresses = body.addresses[:1000]  # enforce cap (also in Pydantic validator)
+    addresses = body.addresses[:1000]  
 
     records = []
     if driver is not None:
@@ -50,7 +49,6 @@ async def batch_score(
             )
             records = [r.data() async for r in result]
 
-    # Fill in nulls for addresses not found
     found = {r.get("address") for r in records}
     for addr in addresses:
         if addr not in found:

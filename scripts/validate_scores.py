@@ -1,4 +1,4 @@
-# scripts/validate_scores.py
+
 """
 Post-batch validation: confirm all nodes have risk_score set.
 Run after every batch job.
@@ -17,11 +17,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+neo4j_pwd = os.environ.get("NEO4J_PASSWORD")
+if not neo4j_pwd:
+    raise ValueError("NEO4J_PASSWORD environment variable is not set")
 driver = GraphDatabase.driver(
     os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
     auth=(
         os.environ.get("NEO4J_USER", "neo4j"),
-        os.environ.get("NEO4J_PASSWORD", "changeme_in_prod"),
+        neo4j_pwd,
     )
 )
 

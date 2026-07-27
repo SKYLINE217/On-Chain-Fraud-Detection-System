@@ -1,7 +1,6 @@
 import os
 import sys
 
-# Ensure src is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.models.graphsage import GraphSAGE
@@ -11,31 +10,29 @@ import torch
 
 def main():
     print("Loading PyG data...")
-    # Expects data/processed/elliptic_pyg.pt to exist
+
     data = load_pyg_data()
-    
+
     print(f"Data loaded: {data.num_nodes} nodes, {data.num_edges} edges.")
-    
-    # Configure model based on default feature count (166 features + 8 temporal = 174 or just 166)
-    # The default PyG graph in this repo seems to have 174 or 166 channels.
+
     in_channels = data.num_features
     print(f"Input features: {in_channels}")
-    
+
     model = GraphSAGE(in_channels=in_channels, hidden_channels=128, out_channels=2)
-    
+
     config = {
-        "epochs": 50, # Keep it reasonable for testing
+        "epochs": 50, 
         "lr": 0.001,
         "weight_decay": 5e-4,
         "patience": 10
     }
-    
+
     checkpoint_dir = os.path.join(os.path.dirname(__file__), '..', 'checkpoints')
     os.makedirs(checkpoint_dir, exist_ok=True)
     checkpoint_path = os.path.join(checkpoint_dir, 'best_model.pt')
-    
+
     print("Starting training...")
-    # pass use_wandb=False to avoid requiring wandb login for local tests
+
     test_metrics = train(
         model=model, 
         data=data, 
@@ -43,7 +40,7 @@ def main():
         checkpoint_path=checkpoint_path,
         use_wandb=False
     )
-    
+
     print("Training complete!")
     print(test_metrics)
 

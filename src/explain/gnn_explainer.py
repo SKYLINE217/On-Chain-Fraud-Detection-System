@@ -47,14 +47,12 @@ def explain_node(
         index=node_idx,
     )
 
-    node_mask = explanation.node_mask    # (N, in_channels) — feature importance
-    edge_mask = explanation.edge_mask    # (E,) — edge importance
+    node_mask = explanation.node_mask    
+    edge_mask = explanation.edge_mask    
 
-    # Top-K important features
     feature_importance = node_mask[node_idx].abs()
     top_k_features = torch.topk(feature_importance, k=min(10, len(feature_importance)))
 
-    # Top-K important edges (incident to target node)
     top_k_edges = torch.topk(edge_mask, k=min(10, len(edge_mask)))
 
     return {

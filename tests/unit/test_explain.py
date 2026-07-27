@@ -1,4 +1,4 @@
-# tests/unit/test_explain.py
+
 import pytest
 import torch
 import numpy as np
@@ -6,12 +6,10 @@ import sys
 import os
 from unittest.mock import MagicMock
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.explain.rationale import generate_rationale, FEATURE_READABLE_NAMES
 from src.explain.shap_explainer import compute_shap_for_node
-
 
 class TestRationale:
     def test_illicit_prefix(self):
@@ -39,25 +37,23 @@ class TestRationale:
             {"feature_name": "f42", "feature_value": 1.23, "shap_value": 0.5},
         ]
         rationale = generate_rationale(shap_features, [], "illicit")
-        # Should reference f42 as "Anonymized feature f42" — no semantic assertion
+
         assert "f42" in rationale
         assert "Anonymized" in rationale
 
-
 class TestShapOutput:
     def test_shap_sorted_by_abs(self):
-        # Mock explainer
+
         mock_explainer = MagicMock()
         mock_explainer.shap_values.return_value = [
-            None,  # licit class
-            np.array([[0.1, -0.5, 0.3, 0.05]])  # illicit class
+            None,  
+            np.array([[0.1, -0.5, 0.3, 0.05]])  
         ]
         feature_names = ["f1", "f2", "f3", "f4"]
         x_node = np.zeros((1, 4))
-        
+
         result = compute_shap_for_node(mock_explainer, x_node, feature_names, top_k=3)
-        
-        # Expected order based on absolute value: f2 (0.5), f3 (0.3), f1 (0.1)
+
         assert len(result) == 3
         assert result[0]["feature_name"] == "f2"
         assert result[1]["feature_name"] == "f3"

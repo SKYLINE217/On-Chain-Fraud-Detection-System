@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 
-// Extended mock data
 const ALL_CLUSTERS = [
   { id: '#1847', size: 234, avg: 0.91, max: 0.99 },
   { id: '#892', size: 187, avg: 0.84, max: 0.97 },
@@ -16,7 +15,6 @@ export default function ClusterExplorer() {
   const [minRiskInput, setMinRiskInput] = useState(0.5);
   const [minSizeInput, setMinSizeInput] = useState(10);
   
-  // Applied filters state
   const [filters, setFilters] = useState({ minRisk: 0.5, minSize: 10 });
 
   const handleApply = () => {

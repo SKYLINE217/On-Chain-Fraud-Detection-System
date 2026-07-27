@@ -1,4 +1,4 @@
-# src/etl/load_neo4j.py
+
 """
 Idempotent load of Elliptic dataset into Neo4j.
 Uses MERGE (not CREATE) — safe to re-run.
@@ -19,7 +19,9 @@ load_dotenv()
 
 NEO4J_URI  = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASS = os.environ.get("NEO4J_PASSWORD", "changeme_in_prod")
+NEO4J_PASS = os.environ.get("NEO4J_PASSWORD")
+if not NEO4J_PASS:
+    raise ValueError("NEO4J_PASSWORD environment variable is not set")
 
 FEATURES_PATH  = "data/raw/elliptic_txs_features.csv"
 CLASSES_PATH   = "data/raw/elliptic_txs_classes.csv"
@@ -28,13 +30,12 @@ EDGELIST_PATH  = "data/raw/elliptic_txs_edgelist.csv"
 FEATURE_COLS = [f"f{i}" for i in range(1, 167)]
 BATCH_SIZE = 1000
 
-
 def load_nodes(driver):
     """Load Transaction nodes with all 166 features + class + timeStep."""
     logger.info("Loading features CSV...")
     if not os.path.exists(FEATURES_PATH):
         raise FileNotFoundError(f"{FEATURES_PATH} not found. Run download_elliptic script first.")
-    
+
     features_df = pd.read_csv(
         FEATURES_PATH, header=None,
         names=["txId", "timeStep"] + FEATURE_COLS
@@ -67,12 +68,10 @@ def load_nodes(driver):
             if i % 10000 == 0:
                 logger.info(f"  nodes: {i}/{len(records)}")
 
-    # Validate
     with driver.session() as session:
         count = session.run("MATCH (n:Transaction) RETURN count(n) AS cnt").single()["cnt"]
         assert count == 203769, f"Node count mismatch: {count}"
         logger.info(f"Node count validated: {count}")
-
 
 def load_edges(driver):
     """Load FLOWS_TO edges."""
@@ -99,12 +98,10 @@ def load_edges(driver):
             if i % 10000 == 0:
                 logger.info(f"  edges: {i}/{len(records)}")
 
-    # Validate
     with driver.session() as session:
         count = session.run("MATCH ()-[r:FLOWS_TO]->() RETURN count(r) AS cnt").single()["cnt"]
         assert count == 234355, f"Edge count mismatch: {count}"
         logger.info(f"Edge count validated: {count}")
-
 
 def create_indexes(driver):
     """Create indexes for fast lookups (idempotent)."""
@@ -117,7 +114,6 @@ def create_indexes(driver):
         for idx in indexes:
             session.run(idx)
     logger.info("Indexes created (or already exist).")
-
 
 if __name__ == "__main__":
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS))

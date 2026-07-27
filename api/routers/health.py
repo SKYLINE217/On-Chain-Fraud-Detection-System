@@ -1,4 +1,4 @@
-# api/routers/health.py
+
 """
 Health check endpoint — verifies Neo4j and Redis connectivity.
 
@@ -12,12 +12,10 @@ from api.middleware.auth import verify_api_key
 
 router = APIRouter()
 
-
 @router.get("/health")
 async def health_check():
     """Public endpoint: minimal info."""
     return {"status": "ok"}
-
 
 @router.get("/health/detailed", dependencies=[Depends(verify_api_key)])
 async def health_check_detailed(
@@ -28,7 +26,6 @@ async def health_check_detailed(
     redis_status = "unhealthy"
     node_count = None
 
-    # Check Neo4j
     try:
         async with driver.session() as session:
             result = await session.run("MATCH (n:Transaction) RETURN count(n) AS cnt")
@@ -38,7 +35,6 @@ async def health_check_detailed(
     except Exception:
         pass
 
-    # Check Redis
     try:
         pong = await redis.ping()
         if pong:

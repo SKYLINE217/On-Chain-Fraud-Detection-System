@@ -1,4 +1,4 @@
-# api/models/requests.py
+
 """
 Pydantic request models for FastAPI input validation.
 See security.md §4.2 for full reference.
@@ -11,7 +11,6 @@ import re
 
 ADDRESS_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
 
-
 class WalletRequest(BaseModel):
     address: str
 
@@ -23,7 +22,6 @@ class WalletRequest(BaseModel):
         if not ADDRESS_PATTERN.match(v):
             raise ValueError("Address contains invalid characters")
         return v
-
 
 class SubgraphRequest(BaseModel):
     address: str
@@ -42,7 +40,6 @@ class SubgraphRequest(BaseModel):
         if v < 1 or v > 2:
             raise ValueError("hops must be 1 or 2")
         return v
-
 
 class PathRequest(BaseModel):
     src: str
@@ -69,7 +66,6 @@ class PathRequest(BaseModel):
             raise ValueError("src and dst must be different addresses")
         return self
 
-
 class BatchScoreRequest(BaseModel):
     addresses: list[str]
 
@@ -80,5 +76,5 @@ class BatchScoreRequest(BaseModel):
             raise ValueError("Must provide 1-1000 addresses")
         for addr in v:
             if not ADDRESS_PATTERN.match(addr) or len(addr) > 100:
-                raise ValueError(f"Invalid address: {addr}")
+                raise ValueError("One or more addresses contain invalid characters")
         return v

@@ -20,7 +20,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 
-
 class GAT(nn.Module):
     """
     Graph Attention Network for on-chain fraud detection.

@@ -4,19 +4,18 @@ import { Network, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
   const setToken = useAuthStore(s => s.setToken);
   const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin') {
-      setToken('mock-jwt-token');
+    if (apiKey.trim().length > 0) {
+      setToken(apiKey);
       navigate('/admin/health');
     } else {
-      setError('Invalid credentials');
+      setError('Please enter an API key');
     }
   };
 
@@ -31,20 +30,12 @@ export default function AdminLogin() {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-[var(--color-text-secondary)]">Username</label>
-            <input 
-              type="text" 
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              className="bg-[var(--color-bg-sunken)] border border-[var(--color-border)] rounded px-3 py-2 text-[var(--color-text-primary)] focus:border-[var(--color-accent)] outline-none"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-[var(--color-text-secondary)]">Password</label>
+            <label className="text-sm text-[var(--color-text-secondary)]">API Key</label>
             <input 
               type="password" 
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="Enter your X-API-Key"
               className="bg-[var(--color-bg-sunken)] border border-[var(--color-border)] rounded px-3 py-2 text-[var(--color-text-primary)] focus:border-[var(--color-accent)] outline-none"
             />
           </div>

@@ -1,4 +1,4 @@
-# api/models/responses.py
+
 """
 Pydantic response models for FastAPI output serialization.
 Matches the frontend.md §7 type definitions exactly.
@@ -9,7 +9,6 @@ demonstration only. Not a certified AML/CFT compliance tool.
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
-
 class WalletResponse(BaseModel):
     address: str
     risk_score: float
@@ -18,7 +17,6 @@ class WalletResponse(BaseModel):
     timeStep: int
     communityId: Optional[int] = None
 
-
 class SubgraphNode(BaseModel):
     id: str
     risk_score: float = 0.0
@@ -26,11 +24,9 @@ class SubgraphNode(BaseModel):
     communityId: int = -1
     timeStep: int = 0
 
-
 class SubgraphEdge(BaseModel):
     src: str
     dst: str
-
 
 class SubgraphResponse(BaseModel):
     address: str
@@ -39,13 +35,11 @@ class SubgraphResponse(BaseModel):
     hops: int
     node_count: int
 
-
 class PathNode(BaseModel):
     id: str
     risk_score: Optional[float] = None
     predicted_label: Optional[str] = None
     timeStep: Optional[int] = None
-
 
 class PathResponse(BaseModel):
     src: str
@@ -54,13 +48,11 @@ class PathResponse(BaseModel):
     path_nodes: list[PathNode]
     hops: Optional[int] = None
 
-
 class ClusterSummary(BaseModel):
     communityId: int
     size: int
     avg_risk: float
     max_risk: float
-
 
 class ClusterWallet(BaseModel):
     txId: str
@@ -68,10 +60,8 @@ class ClusterWallet(BaseModel):
     predicted_label: Optional[str] = None
     timeStep: Optional[int] = None
 
-
 class ClusterDetail(ClusterSummary):
     wallets: list[ClusterWallet]
-
 
 class HealthResponse(BaseModel):
     status: str

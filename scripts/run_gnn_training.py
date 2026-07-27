@@ -22,7 +22,6 @@ import logging
 import os
 import sys
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
@@ -36,7 +35,6 @@ logger = logging.getLogger(__name__)
 MOCK_PARQUET = "mocks/person_a/mock_features_combined.parquet"
 REAL_PARQUET = "data/processed/features_combined.parquet"
 
-
 def main():
     parser = argparse.ArgumentParser(description="Stage 2: GNN Training")
     parser.add_argument("--mock", action="store_true", help="Use mock data")
@@ -48,15 +46,11 @@ def main():
     use_wandb = not args.no_wandb
     parquet_path = MOCK_PARQUET if args.mock else REAL_PARQUET
 
-    # Ensure mock data exists
     if args.mock and not os.path.exists(MOCK_PARQUET):
         logger.info("Generating mock parquet...")
         from mocks.person_a.generate_mock_parquet import generate_mock_parquet
         generate_mock_parquet(MOCK_PARQUET)
 
-    # -----------------------------------------------------------------------
-    # 1. Build PyG Data
-    # -----------------------------------------------------------------------
     logger.info("=" * 60)
     logger.info("STEP 1: Building PyG Data object")
     logger.info("=" * 60)
@@ -76,9 +70,6 @@ def main():
         f"licit in train = {int((data.y[data.train_mask] == 0).sum())}"
     )
 
-    # -----------------------------------------------------------------------
-    # 2. Train GraphSAGE
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 2: Training GraphSAGE (3L, h=128, mean)")
@@ -127,9 +118,6 @@ def main():
 
     logger.info(f"GraphSAGE test metrics: {sage_metrics}")
 
-    # -----------------------------------------------------------------------
-    # 3. Train GAT
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 3: Training GAT (2L, h=128, 4 heads)")
@@ -161,9 +149,6 @@ def main():
 
     logger.info(f"GAT test metrics: {gat_metrics}")
 
-    # -----------------------------------------------------------------------
-    # 4. Verify get_embedding()
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 4: Verifying get_embedding()")
@@ -176,9 +161,6 @@ def main():
     assert not torch.isnan(emb).any(), "NaN in embeddings"
     logger.info(f"get_embedding() output: {emb.shape} -- OK")
 
-    # -----------------------------------------------------------------------
-    # 5. Verify GAT return_attention
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STEP 5: Verifying GAT attention weights")
@@ -194,9 +176,6 @@ def main():
         f"GAT attention: edge_idx={edge_idx.shape}, alpha={alpha.shape} -- OK"
     )
 
-    # -----------------------------------------------------------------------
-    # 6. Results summary
-    # -----------------------------------------------------------------------
     logger.info("")
     logger.info("=" * 60)
     logger.info("STAGE 2 RESULTS")
@@ -215,7 +194,6 @@ def main():
             "not real Elliptic features."
         )
 
-    # Checklist
     logger.info("")
     logger.info("STAGE 2 CHECKLIST")
     checks = {
@@ -240,7 +218,6 @@ def main():
     else:
         logger.error("\nSome checks failed")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

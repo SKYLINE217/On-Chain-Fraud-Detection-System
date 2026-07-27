@@ -27,7 +27,7 @@ export default function NavBar() {
           </span>
         </div>
 
-        {/* Desktop Nav */}
+        {}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
             <NavLink
@@ -55,7 +55,7 @@ export default function NavBar() {
           )}
         </div>
 
-        {/* Mobile Nav Toggle */}
+        {}
         <button
           className="md:hidden p-2 text-muted-foreground"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -64,7 +64,7 @@ export default function NavBar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {}
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-14 left-0 w-full bg-surface border-b border-border p-4 flex flex-col gap-4 shadow-modal">
           {navLinks.map((link) => (

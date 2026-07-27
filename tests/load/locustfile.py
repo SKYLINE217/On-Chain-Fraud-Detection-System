@@ -1,4 +1,4 @@
-# tests/load/locustfile.py
+
 """
 Locust load test for FastAPI endpoints.
 See person_a_stages.md §3.6 for full reference.
@@ -22,15 +22,12 @@ from locust import HttpUser, task, between
 import random
 import os
 
-# Sample of real txIds to use in requests
-# Replace with actual txIds from your dataset
 SAMPLE_ADDRESSES = [
     "896630", "901217", "912345", "843201", "772334",
     "856321", "788912", "923456", "834567", "745678",
 ]
 
 API_KEY = os.environ.get("API_KEY", "dev_key_change_me")
-
 
 class WalletUser(HttpUser):
     wait_time = between(0.5, 2.0)

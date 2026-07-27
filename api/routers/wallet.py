@@ -1,4 +1,4 @@
-# api/routers/wallet.py
+
 """
 Wallet lookup, subgraph, and path endpoints.
 See person_a_stages.md §3.3 for full reference.
@@ -19,7 +19,6 @@ from api.models.responses import WalletResponse, SubgraphResponse, PathResponse
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
-
 AddressParam = Annotated[
     str,
     Path(pattern=r'^[a-zA-Z0-9_\-]{1,100}$', description="Transaction address")
@@ -31,13 +30,12 @@ async def get_wallet(
     driver: AsyncDriver = Depends(get_neo4j_driver),
     redis: Redis = Depends(get_redis),
 ):
-    # 1. Cache check
+
     cache_key = f"v2:score:{hashlib.sha256(address.encode()).hexdigest()[:16]}:{address}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
 
-    # 2. Neo4j lookup (uses txId_idx — no table scan)
     async with driver.session() as session:
         result = await session.run(
             """
@@ -55,7 +53,6 @@ async def get_wallet(
 
     payload = dict(record)
 
-    # Default values for unscored nodes
     if payload.get("risk_score") is None:
         payload["risk_score"] = 0.0
     if payload.get("predicted_label") is None:
@@ -63,10 +60,8 @@ async def get_wallet(
     if payload.get("confidence") is None:
         payload["confidence"] = 0.0
 
-    # 3. Cache write (TTL = 1 hour)
     await redis.set(cache_key, json.dumps(payload), ex=3600)
     return payload
-
 
 @router.get("/{address}/subgraph", response_model=SubgraphResponse)
 async def get_subgraph(
@@ -74,7 +69,7 @@ async def get_subgraph(
     hops: int = 2,
     driver: AsyncDriver = Depends(get_neo4j_driver),
 ):
-    safe_hops = min(hops, 2)  # hard cap — defense in depth
+    safe_hops = min(hops, 2)  
 
     async with driver.session() as session:
         result = await session.run(
@@ -104,7 +99,7 @@ async def get_subgraph(
             "communityId": n.get("communityId", -1) or -1,
             "timeStep": n.get("timeStep", 0) or 0,
         }
-        for n in record["nodes"][:200]  # hard cap in Python too
+        for n in record["nodes"][:200]  
     ]
     edges = [
         {"src": r.start_node["txId"], "dst": r.end_node["txId"]}
@@ -118,7 +113,6 @@ async def get_subgraph(
         "hops": safe_hops,
         "node_count": len(nodes),
     }
-
 
 @router.get("/path/find", response_model=PathResponse)
 async def get_path(
