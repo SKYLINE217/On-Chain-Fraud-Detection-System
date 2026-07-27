@@ -1,6 +1,3 @@
-"""
-plot_pr_curves.py -- Fetch PR curve artifacts from W&B and plot them.
-"""
 import argparse
 import matplotlib.pyplot as plt
 import sys

@@ -1,28 +1,3 @@
-"""
-train.py -- Full GNN training loop with early stopping on val PR-AUC.
-
-Key design decisions:
-    - Loss masking: only compute loss on labeled training nodes (unknown excluded)
-    - Class weights: inverse-frequency weighting to handle 2% illicit imbalance
-    - Early stopping: patience on val PR-AUC (primary metric)
-    - Gradient clipping: max_norm=1.0 to prevent exploding gradients
-    - LR scheduler: ReduceLROnPlateau on val PR-AUC
-
-Usage:
-    from src.models.graphsage import GraphSAGE
-    from src.models.train import train
-    from src.features.build_pyg import load_pyg_data
-
-    data = load_pyg_data()
-    model = GraphSAGE(in_channels=174, hidden_channels=128, out_channels=2)
-    test_metrics = train(model, data, config={"epochs": 300}, checkpoint_path="checkpoints/best_model.pt")
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

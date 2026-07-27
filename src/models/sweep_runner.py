@@ -1,10 +1,3 @@
-"""
-sweep_runner.py -- W&B Agent execution script for hyperparameter sweep.
-
-Run this as:
-    wandb agent your-username/onchain-fraud-gnn/SWEEP_ID
-"""
-
 import os
 import sys
 

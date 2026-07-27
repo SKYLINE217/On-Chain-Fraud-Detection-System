@@ -1,21 +1,3 @@
-"""
-Focal Loss for extreme class imbalance.
-
-Reduces loss weight for easy examples, focuses training on hard examples.
-FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
-
-gamma=2, alpha=0.25 is standard starting point.
-
-Usage:
-    Switch to Focal Loss if after 50 epochs val PR-AUC < 0.6 with class
-    weighting. Try gamma=2, alpha=0.25 first.
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

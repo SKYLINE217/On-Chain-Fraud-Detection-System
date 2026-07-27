@@ -1,23 +1,3 @@
-"""
-build_pyg.py -- Build PyG Data object from features_combined.parquet.
-
-Converts the parquet + edgelist into a torch_geometric.data.Data object with:
-    - x: (N, 174) feature matrix
-    - edge_index: (2, E) edge tensor
-    - y: (N,) labels -- 0=licit, 1=illicit, -1=unknown
-    - train_mask, val_mask, test_mask: temporal split masks (labeled only)
-
-Temporal split (non-negotiable):
-    Train: time steps 1-34
-    Val:   time steps 35-39
-    Test:  time steps 40-49
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import os
 import torch
 import pandas as pd

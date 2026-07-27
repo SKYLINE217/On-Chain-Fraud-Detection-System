@@ -1,16 +1,3 @@
-
-"""
-Hit each FastAPI endpoint with a known address and validate response schema.
-Run against a running FastAPI instance before BFF wiring.
-
-See person_a_stages.md §5.1 for full reference.
-
-Usage:
-    python scripts/validate_api_schemas.py
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import httpx
 import os
 from dotenv import load_dotenv

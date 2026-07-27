@@ -1,11 +1,3 @@
-
-"""
-Compute 5 engineered features + run GDS algorithms on Neo4j.
-Reads CSVs directly (not Neo4j) for vectorized speed; writes GDS results back to Neo4j.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import pandas as pd
 import numpy as np
 from scipy.stats import skew

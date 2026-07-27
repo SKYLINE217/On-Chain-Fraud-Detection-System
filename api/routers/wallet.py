@@ -1,11 +1,3 @@
-
-"""
-Wallet lookup, subgraph, and path endpoints.
-See person_a_stages.md §3.3 for full reference.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from fastapi import APIRouter, Depends, HTTPException, Path
 from typing import Annotated
 from neo4j import AsyncDriver

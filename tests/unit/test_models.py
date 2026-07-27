@@ -1,4 +1,3 @@
-
 import torch
 import pytest
 from src.models.graphsage import GraphSAGE

@@ -1,24 +1,3 @@
-"""
-GraphSAGE node classifier for on-chain fraud detection.
-
-Architecture:
-    SAGEConv(in -> hidden) + BN + ReLU + Dropout
-    [SAGEConv(hidden -> hidden) + BN + ReLU + Dropout] x (num_layers - 2)
-    SAGEConv(hidden -> out)
-
-Production model: mean aggregation (inductive, generalizes to unseen nodes).
-
-Why GraphSAGE over GCN: GraphSAGE is inductive -- it learns aggregation
-functions that generalize to unseen nodes. This is critical because new
-wallet addresses appear constantly. GCN is transductive (requires all nodes
-at training time).
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -1,16 +1,3 @@
-
-"""
-Post-batch validation: confirm all nodes have risk_score set.
-Run after every batch job.
-
-See person_a_stages.md §4.3 for full reference.
-
-Usage:
-    python scripts/validate_scores.py
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from neo4j import GraphDatabase
 import os
 from dotenv import load_dotenv

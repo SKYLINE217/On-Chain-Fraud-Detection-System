@@ -1,20 +1,3 @@
-"""
-Graph Attention Network (GAT) for on-chain fraud detection.
-
-Architecture:
-    GATConv(in -> hidden, heads=4) -> concatenation -> ELU -> Dropout
-    GATConv(hidden*4 -> out, heads=1, concat=False)
-
-Key advantage: attention weights are a free interpretability signal.
-Attention weights from conv1 indicate which neighbors each node attends to.
-Extract via return_attention=True.
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -1,11 +1,3 @@
-
-"""
-Pydantic response models for FastAPI output serialization.
-Matches the frontend.md §7 type definitions exactly.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from pydantic import BaseModel, field_validator
 from typing import Optional
 

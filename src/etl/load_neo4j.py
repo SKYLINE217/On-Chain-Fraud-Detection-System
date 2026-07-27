@@ -1,11 +1,3 @@
-
-"""
-Idempotent load of Elliptic dataset into Neo4j.
-Uses MERGE (not CREATE) — safe to re-run.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import pandas as pd
 from neo4j import GraphDatabase
 import os

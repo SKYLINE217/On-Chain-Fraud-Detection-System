@@ -1,7 +1,3 @@
-"""
-POST /score — batch scoring for a list of addresses.
-Returns pre-computed scores from Neo4j (no model inference on hot path).
-"""
 from fastapi import APIRouter, Depends
 
 try:

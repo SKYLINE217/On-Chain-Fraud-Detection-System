@@ -1,6 +1,3 @@
-"""
-shap_explainer.py -- Extract node feature importance using SHAP.
-"""
 import shap
 import numpy as np
 import torch

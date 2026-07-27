@@ -1,7 +1,3 @@
-"""
-rationale.py -- Generate human-readable explanation strings from SHAP and GNNExplainer outputs.
-"""
-
 FEATURE_READABLE_NAMES = {
     "tx_freq": "transaction frequency",
     "amount_mean": "mean transaction amount",

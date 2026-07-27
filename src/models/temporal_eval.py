@@ -1,6 +1,3 @@
-"""
-temporal_eval.py -- Evaluate F1 per time step to reveal temporal degradation.
-"""
 import torch
 import torch.nn.functional as F
 import numpy as np

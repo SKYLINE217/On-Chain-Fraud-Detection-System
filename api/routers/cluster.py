@@ -1,11 +1,3 @@
-
-"""
-Cluster (community) endpoints for the Cluster Explorer tab.
-See person_a_stages.md §5.2 for full reference.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from fastapi import APIRouter, Depends, Path, Query
 from typing import Annotated, Literal
 from api.deps import get_neo4j_driver

@@ -1,22 +1,3 @@
-"""
-run_gnn_training.py -- Stage 2 entry point for first end-to-end GNN training.
-
-Trains GraphSAGE and GAT on the Elliptic dataset (mock or real).
-Validates invariants, runs first training loop, and checks success criteria:
-    - Training loss decreases in first 10 epochs
-    - Val PR-AUC > 0.5 after 20 epochs (on real data)
-    - No NaN loss
-
-Usage:
-    python scripts/run_gnn_training.py --mock --no-wandb
-    python scripts/run_gnn_training.py  # real data + W&B
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import argparse
 import logging
 import os

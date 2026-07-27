@@ -1,12 +1,3 @@
-
-"""
-API key verification middleware for FastAPI.
-All requests must include a valid X-API-Key header.
-See security.md §2.1 for full reference.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from fastapi import Security, HTTPException, status
 from fastapi.security import APIKeyHeader
 import hmac

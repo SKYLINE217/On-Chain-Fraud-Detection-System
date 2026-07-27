@@ -1,15 +1,3 @@
-
-"""
-Inflate Neo4j to 10M+ edges by replicating the Elliptic graph ~43×
-with randomized edge assignments between clones.
-Documents clearly in runbook.md that this is synthetic.
-
-Usage:
-    python scripts/inflate_neo4j.py
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import random
 from neo4j import GraphDatabase
 import os

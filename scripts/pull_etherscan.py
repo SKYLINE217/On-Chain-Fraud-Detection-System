@@ -1,20 +1,3 @@
-
-"""
-Pull BTC amount proxies from Etherscan for a sample of txIds.
-Only needed if amount features are missing from Elliptic raw features.
-Elliptic f-features include aggregated amounts — check before running.
-
-NOTE: Elliptic dataset txIds are anonymized hashes — Etherscan enrichment
-may not resolve. Use as-is; the engineered `amount_mean`/`amount_skew`
-features fall back to Elliptic f-feature aggregates if Etherscan returns
-no data.
-
-Usage:
-    python scripts/pull_etherscan.py
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import requests
 import time
 import os

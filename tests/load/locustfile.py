@@ -1,23 +1,3 @@
-
-"""
-Locust load test for FastAPI endpoints.
-See person_a_stages.md §3.6 for full reference.
-
-Run:
-    locust -f tests/load/locustfile.py \
-      --host http://localhost:8000 \
-      --users 50 --spawn-rate 5 \
-      --run-time 120s --headless \
-      --csv docs/load_test_results/locust_50users
-
-Targets from system_design.md §7.3:
-    p50 /wallet: <500ms (cached)
-    p95 /wallet: <5000ms
-    p95 /subgraph: <5000ms (20 users)
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from locust import HttpUser, task, between
 import random
 import os

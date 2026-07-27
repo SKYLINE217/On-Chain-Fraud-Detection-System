@@ -1,31 +1,3 @@
-"""
-baselines.py — Baseline models for on-chain fraud detection.
-
-Implements Logistic Regression, Random Forest, and XGBoost on the Elliptic
-Bitcoin Transaction Dataset with correct temporal split:
-    Train: time steps 1-34
-    Val:   time steps 35-39
-    Test:  time steps 40-49
-
-Primary metric: PR-AUC on illicit class (class=1).
-Secondary: F1, Precision, Recall.
-
-Usage:
-    from src.models.baselines import run_all_baselines
-    results, xgb_model = run_all_baselines(
-        parquet_path="data/processed/features_combined.parquet",
-        use_wandb=True,
-    )
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system. It must not be used for
-    regulatory reporting, enforcement decisions, or any purpose requiring
-    compliance with financial regulations (BSA, FinCEN, EU AMLD, or equivalent).
-    The authors disclaim all liability for any such use.
-"""
-
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression

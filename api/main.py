@@ -1,11 +1,3 @@
-
-"""
-FastAPI application factory for onchain-fraud-gnn.
-See person_a_stages.md §3.1, security.md §3.2, §5, §6 for full reference.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError

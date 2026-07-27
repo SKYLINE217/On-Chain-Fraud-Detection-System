@@ -1,10 +1,3 @@
-
-"""
-Health check endpoint — verifies Neo4j and Redis connectivity.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from fastapi import APIRouter, Depends
 from api.deps import get_neo4j_driver, get_redis
 

@@ -1,16 +1,3 @@
-"""
-train_pipeline.py — Standalone end-to-end training pipeline.
-
-Downloads Elliptic dataset via kagglehub, engineers features locally
-(without Neo4j GDS), trains baseline + GNN models, saves checkpoints.
-
-Usage:
-    python scripts/train_pipeline.py
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
-
 import os
 import sys
 import json

@@ -1,27 +1,3 @@
-"""
-verify_parquet.py — Validate features_combined.parquet against integration contract.
-
-Run this BEFORE any model training.
-Validates that the parquet matches the exact contract from PLAN.md.
-
-Usage:
-    python scripts/verify_parquet.py [path_to_parquet]
-
-Contract (from PLAN.md → Integration Contracts):
-    Shape: (203769, 177)
-    NOTE: PLAN.md states 171 but explicitly lists 177 columns
-    (txId + timeStep + class + f1..f166 + 8 engineered = 3+166+8 = 177).
-    The column list is authoritative.
-    Zero NaNs in numeric feature columns
-    class values ∈ {"1", "2", "unknown"}
-    timeStep range: 1-49
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import pandas as pd
 import sys
 import os

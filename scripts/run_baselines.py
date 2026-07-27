@@ -1,29 +1,3 @@
-"""
-run_baselines.py — Stage 1 entry point for Person B.
-
-Runs the full Stage 1 baseline pipeline:
-    1. Verifies parquet (using mock or real data)
-    2. Trains LR, RF, XGBoost baselines
-    3. Saves XGBoost model for SHAP (Stage 4)
-    4. Generates overlaid PR curve figure
-    5. Prints comparison table
-
-Usage:
-    # With mock data (default for development):
-    python scripts/run_baselines.py --mock
-
-    # With real data (after Person A delivers):
-    python scripts/run_baselines.py
-
-    # Disable W&B logging:
-    python scripts/run_baselines.py --mock --no-wandb
-
-Compliance Disclaimer:
-    This system is a research and portfolio demonstration only. It is NOT
-    a certified AML/CFT compliance tool, a regulated financial product, or
-    a legally defensible fraud-detection system.
-"""
-
 import argparse
 import logging
 import os

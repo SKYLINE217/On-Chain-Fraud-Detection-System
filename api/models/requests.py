@@ -1,11 +1,3 @@
-
-"""
-Pydantic request models for FastAPI input validation.
-See security.md §4.2 for full reference.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from pydantic import BaseModel, field_validator, model_validator
 import re
 

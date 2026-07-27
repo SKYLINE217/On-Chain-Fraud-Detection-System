@@ -1,6 +1,3 @@
-"""
-compare_models.py -- Fetch all run results from W&B and produce comparison table.
-"""
 import argparse
 import pandas as pd
 import sys

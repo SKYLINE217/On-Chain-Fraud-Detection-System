@@ -1,11 +1,3 @@
-
-"""
-Dependency injection for Neo4j driver and Redis client.
-Used as FastAPI Depends() in all routers.
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 from neo4j import AsyncGraphDatabase
 from redis.asyncio import Redis
 import os

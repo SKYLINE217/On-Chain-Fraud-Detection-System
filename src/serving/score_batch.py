@@ -1,17 +1,3 @@
-
-"""
-Nightly batch job: loads GNN checkpoint, runs inference on all 203,769 nodes,
-writes risk_score / predicted_label / confidence / embedding back to Neo4j.
-Flushes Redis after write.
-
-See person_a_stages.md §4.1 for full reference.
-
-Usage:
-    python -m src.serving.score_batch --flush-redis
-
-Compliance Disclaimer: This system is a research and portfolio
-demonstration only. Not a certified AML/CFT compliance tool.
-"""
 import argparse
 import json
 import logging

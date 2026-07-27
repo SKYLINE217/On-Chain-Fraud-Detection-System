@@ -1,6 +1,3 @@
-"""
-gnn_explainer.py -- Extract node and edge importance using GNNExplainer.
-"""
 import torch
 from torch_geometric.explain import Explainer, GNNExplainer
 from torch_geometric.data import Data
