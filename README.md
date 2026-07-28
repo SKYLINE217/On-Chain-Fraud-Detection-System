@@ -426,7 +426,39 @@ This project is for **research and portfolio demonstration purposes only**.
 
 <br/>
 
-**Built with** 🧠 **by [SKYLINE217](https://github.com/SKYLINE217)**
+### 👥 Built with 🧠 & ☕ by
+
+<table>
+<tr>
+<td align="center" width="50%">
+<a href="https://github.com/SKYLINE217">
+<img src="https://github.com/SKYLINE217.png" width="120" height="120" style="border-radius:50%" alt="SKYLINE217"/>
+<br/>
+<sub><b>🚀 SKYLINE217</b></sub>
+</a>
+<br/><br/>
+<a href="https://github.com/SKYLINE217"><img src="https://img.shields.io/badge/-SKYLINE217-181717?style=flat-square&logo=github&logoColor=white" /></a>
+<br/>
+<sub>ML Pipeline • GNN Models • API Architecture • DevOps</sub>
+</td>
+<td align="center" width="50%">
+<a href="https://github.com/RaajitSingh1306">
+<img src="https://github.com/RaajitSingh1306.png" width="120" height="120" style="border-radius:50%" alt="RaajitSingh1306"/>
+<br/>
+<sub><b>🚀 RaajitSingh1306</b></sub>
+</a>
+<br/><br/>
+<a href="https://github.com/RaajitSingh1306"><img src="https://img.shields.io/badge/-RaajitSingh1306-181717?style=flat-square&logo=github&logoColor=white" /></a>
+<br/>
+<sub>React Dashboard • Graph Viz • Feature Engineering • Testing</sub>
+</td>
+</tr>
+</table>
+
+<br/>
+
+![Contributors](https://img.shields.io/github/contributors/SKYLINE217/On-Chain-Fraud-Detection-System?style=for-the-badge&color=4D6AF5&label=Contributors)
+![Commits](https://img.shields.io/github/commit-activity/t/SKYLINE217/On-Chain-Fraud-Detection-System?style=for-the-badge&color=00D4AA&label=Total%20Commits)
 
 <br/>
 
